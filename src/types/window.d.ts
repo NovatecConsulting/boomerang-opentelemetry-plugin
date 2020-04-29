@@ -1,5 +1,7 @@
 export {};
 
 declare global {
-  interface Window { BOOMR: any; }
+  interface Window {
+    BOOMR: any;
+  }
 }

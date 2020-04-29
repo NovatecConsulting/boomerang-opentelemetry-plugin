@@ -49,7 +49,7 @@ export default class OpenTelemetryTracingImpl {
       ],
     });
 
-    // if we have any exporter available, then any of them, otherwise use the console logger
+    // use OT collector if logging to console is not enabled
     if (!this.props.consoleOnly) {
       // jaeger exporter
       provider.addSpanProcessor(
@@ -87,7 +87,7 @@ export default class OpenTelemetryTracingImpl {
         return `${this.beaconUrl.substring(0, indexOf)}/spans`;
       }
     }
-    return this.beaconUrl;
+    return undefined;
   };
 
   private resolveSampler = () => {
@@ -102,5 +102,4 @@ export default class OpenTelemetryTracingImpl {
       return new ProbabilitySampler(samplingRate);
     }
   };
-
 }
