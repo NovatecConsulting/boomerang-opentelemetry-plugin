@@ -12,7 +12,7 @@ Currently implemented features:
 
 ## Setup
 
-In basic setup requires only to include the `boomerang-opentelemetry.js` file to the list of the boomerang plugins to run.
+The basic setup requires only to include the `boomerang-opentelemetry.js` file to the list of the boomerang plugins to run.
 This setup works out-of-the-box with the  [inspectit-ocelot EUM server](https://github.com/inspectIT/inspectit-ocelot/tree/master/components/inspectit-ocelot-eum-server) and traces will be sent to the server endpoint relative to the defined `beacon_url` Boomerang property.
 If you want to use the standard OpenTelemetry collector, check out the configuration section.
 
@@ -43,4 +43,4 @@ Available options are:
 | `collectorConfiguration` | Object that defines the OpenTelemetry collector configuration, like the URL to send spans to. See [CollectorExporterConfig](https://github.com/open-telemetry/opentelemetry-js/blob/master/packages/opentelemetry-exporter-collector/src/CollectorExporter.ts) interface for all options. | `undefined` |
 | `samplingRate` | Sampling rate to use when collecting spans. Value must be [0-1]. | `1` |
 | `corsUrls` | Array of CORS URLs to take into consideration when propagating trace information. By default, CORS URLs are excluded from the propagation. | `[]` |
-| `consoleOnly` | If `true` spans will be logged on the console and not sent to OpenTelemetry collector. | `false` |
+| `consoleOnly` | If `true` spans will be logged on the console and not sent to the OpenTelemetry collector. | `false` |

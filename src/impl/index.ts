@@ -51,7 +51,7 @@ export default class OpenTelemetryTracingImpl {
 
     // if we have any exporter available, then any of them, otherwise use the console logger
     if (!this.props.consoleOnly) {
-      // jaerer exporter
+      // jaeger exporter
       provider.addSpanProcessor(
         new SimpleSpanProcessor(
           new CollectorExporter({
