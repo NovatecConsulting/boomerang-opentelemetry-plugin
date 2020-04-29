@@ -1,0 +1,10 @@
+{
+  // added by ise
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  // generated settings below
+  "typescript.tsdk": "node_modules/typescript/lib"
+}
