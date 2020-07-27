@@ -9,6 +9,7 @@ The plugin version always corresponds to the opentelemetry-js version that's bei
 Currently implemented features:
 
 * Automatic instrumentation of asynhrounous XHR requests with the B3 propagation. [More details ↗](https://github.com/open-telemetry/opentelemetry-js/tree/master/packages/opentelemetry-plugin-xml-http-request)
+* Provides access to the OpenTelemtry Tracing-API for manual instrumentation
 
 ## Setup
 
@@ -34,7 +35,6 @@ All available configuration options are optional.
     }
   });
 </script>
-```
 
 Available options are:
 
@@ -44,3 +44,19 @@ Available options are:
 | `samplingRate` | Sampling rate to use when collecting spans. Value must be [0-1]. | `1` |
 | `corsUrls` | Array of CORS URLs to take into consideration when propagating trace information. By default, CORS URLs are excluded from the propagation. | `[]` |
 | `consoleOnly` | If `true` spans will be logged on the console and not sent to the OpenTelemetry collector. | `false` |
+
+## Manual Instrumentation
+
+The boomerang OpenTelemetry Plugin also exposes the OpenTelemetry tracing API for manual instrumentation:
+
+```
+var tracer = window.BOOMR.plugins.OpenTelemetry.getTracer("my-library-name", "0.1.0");
+
+var span = tracer.startSpan("doSomething", { parent: tracer.getCurrentSpan() });
+tracer.withSpan(span2, function() => {
+    //do something here...
+})
+span.end();
+```
+
+Make sure to check that `window.BOOMR.plugins.OpenTelemetry` actually exists prior to using it in your code in case you load boomerang asynchronously.

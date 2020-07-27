@@ -14,7 +14,7 @@ import OpenTelemetryTracingImpl from './impl';
   // A private object to encapsulate all your implementation details
   // This is optional, but the way we recommend you do it.
   const impl = new OpenTelemetryTracingImpl();
-
+  
   //
   // Public exports
   //
@@ -43,6 +43,7 @@ import OpenTelemetryTracingImpl from './impl';
     },
 
     // Any other public methods would be defined here
+    getTracer: impl.getTracer,
 
     is_complete: () => {
       // This method should determine if the plugin has completed doing what it

@@ -5,6 +5,7 @@ import { XMLHttpRequestPlugin } from '@opentelemetry/plugin-xml-http-request';
 import { PropagateTraceHeaderCorsUrls } from '@opentelemetry/plugin-xml-http-request/build/src/types';
 import { ConsoleSpanExporter, SimpleSpanProcessor } from '@opentelemetry/tracing';
 import { WebTracerProvider } from '@opentelemetry/web';
+import api from '@opentelemetry/api';
 
 export interface TracingProperties {
   samplingRate: number;
@@ -79,6 +80,10 @@ export default class OpenTelemetryTracingImpl {
   public getProps = () => this.props;
 
   public setBeaconUrl = (url: string) => (this.beaconUrl = url);
+
+  public getTracer(name : string, version?: string) {
+    return api.trace.getTracer(name,version);
+  }
 
   private collectorUrlFromBeaconUrl = () => {
     if (this.beaconUrl) {
