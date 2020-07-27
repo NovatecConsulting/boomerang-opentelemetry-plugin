@@ -16,7 +16,7 @@ module.exports = {
     extensions: [ '.ts', '.js' ],
   },
   output: {
-    filename: 'boomerang-opentelementry.dev.js',
+    filename: 'boomerang-opentelemetry.dev.js',
     path: path.resolve(__dirname, 'dist'),
   },
   mode: 'development'
