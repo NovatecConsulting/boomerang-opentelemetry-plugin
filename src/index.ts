@@ -8,8 +8,8 @@ import OpenTelemetryTracingImpl from './impl';
 (function (): void {
   // First, make sure BOOMR is actually defined.  It's possible that your plugin
   // is loaded before boomerang, in which case you'll need this.
-  const BOOMR = window.BOOMR || {};
-  BOOMR.plugins = BOOMR.plugins || {};
+  window.BOOMR = window.BOOMR || {};
+  window.BOOMR.plugins = window.BOOMR.plugins || {};
 
   // A private object to encapsulate all your implementation details
   // This is optional, but the way we recommend you do it.
@@ -18,13 +18,13 @@ import OpenTelemetryTracingImpl from './impl';
   //
   // Public exports
   //
-  BOOMR.plugins.OpenTelemetry = {
+  window.BOOMR.plugins.OpenTelemetry = {
     init: (config: any) => {
       // list of user configurable properties
       const properties = Object.keys(impl.getProps());
 
       // This block is only needed if you actually have user configurable properties
-      BOOMR.utils.pluginConfig(impl.getProps(), config, 'OpenTelemetry', properties);
+      window.BOOMR.utils.pluginConfig(impl.getProps(), config, 'OpenTelemetry', properties);
 
       // resolve beacon url
       const beaconUrl = config['beacon_url'];

@@ -17,7 +17,7 @@ module.exports = {
   },
   output: {
     filename: 'boomerang-opentelemetry.dev.js',
-    path: path.resolve(__dirname, 'dist'),
+    path: path.resolve(__dirname, 'tmp_out'),
   },
   mode: 'development'
 };
