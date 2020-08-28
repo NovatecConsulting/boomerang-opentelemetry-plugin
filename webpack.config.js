@@ -10,14 +10,26 @@ module.exports = {
         use: 'ts-loader',
         exclude: /node_modules/,
       },
+	  {
+	    test: /\.m?js$/,
+	    exclude: /node_modules\/(?!@?opentelemetry)/,
+	    use: {
+		  loader: 'babel-loader',
+		  options: {
+		    sourceType: "unambiguous",
+		    presets: ['@babel/preset-env'],
+			plugins: ["@babel/plugin-transform-runtime"]
+		  }
+	    }
+	  }
     ],
   },
   resolve: {
     extensions: [ '.ts', '.js' ],
   },
   output: {
-    filename: 'boomerang-opentelemetry.dev.js',
-    path: path.resolve(__dirname, 'tmp_out'),
+    filename: 'boomerang-opentelemetry.js',
+    path: path.resolve(__dirname, 'dist'),
   },
   mode: 'development'
 };

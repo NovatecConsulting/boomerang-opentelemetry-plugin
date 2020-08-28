@@ -1,5 +1,4 @@
 import OpenTelemetryTracingImpl from './impl';
-
 /**
  * Skeleton template for all boomerang plugins.
  *
