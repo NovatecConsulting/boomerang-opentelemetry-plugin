@@ -36,6 +36,7 @@ All available configuration options are optional.
   });
 </script>
 
+```
 Available options are:
 
 | Option | Description | Default value |
@@ -49,7 +50,6 @@ Available options are:
 
 The boomerang OpenTelemetry Plugin also exposes the OpenTelemetry tracing API for manual instrumentation:
 
-```
 var tracer = window.BOOMR.plugins.OpenTelemetry.getTracer("my-library-name", "0.1.0");
 
 var span = tracer.startSpan("doSomething", { parent: tracer.getCurrentSpan() });
