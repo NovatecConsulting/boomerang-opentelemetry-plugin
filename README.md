@@ -36,6 +36,7 @@ All available configuration options are optional.
   });
 </script>
 
+```
 Available options are:
 
 | Option | Description | Default value |
