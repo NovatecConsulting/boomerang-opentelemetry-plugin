@@ -27,10 +27,12 @@ All available configuration options are optional.
   BOOMR.init({
     beacon_url: 'http://localhost:8080/beacon/',
     OpenTelemetry: {
-      samplingRate: 0.5,
+      samplingRate: 0.5, // an optional sampling rate
       corsUrls: ['https://my.backend.com'],
       collectorConfiguration: {
-        url: 'http://my.opentelemetry.collector'
+        url: 'http://localhost:55681/v1/trace' // an optional url for an OpenTelemetry collector
+        headers: {}, // an optional object containing custom headers to be sent with each request
+        concurrencyLimit: 10, // an optional limit on pending requests
       }
     }
   });
@@ -41,7 +43,7 @@ Available options are:
 
 | Option | Description | Default value |
 |---|---|---|
-| `collectorConfiguration` | Object that defines the OpenTelemetry collector configuration, like the URL to send spans to. See [CollectorExporterConfig](https://github.com/open-telemetry/opentelemetry-js/blob/master/packages/opentelemetry-exporter-collector/src/CollectorExporter.ts) interface for all options. | `undefined` |
+| `collectorConfiguration` | Object that defines the OpenTelemetry collector configuration, like the URL to send spans to. See [CollectorExporterConfig](https://www.npmjs.com/package/@opentelemetry/exporter-collector) interface for all options. | `undefined` |
 | `samplingRate` | Sampling rate to use when collecting spans. Value must be [0-1]. | `1` |
 | `corsUrls` | Array of CORS URLs to take into consideration when propagating trace information. By default, CORS URLs are excluded from the propagation. | `[]` |
 | `consoleOnly` | If `true` spans will be logged on the console and not sent to the OpenTelemetry collector. | `false` |
@@ -51,7 +53,7 @@ Available options are:
 The boomerang OpenTelemetry Plugin also exposes the OpenTelemetry tracing API for manual instrumentation:
 
 ```
-var tracer = window.BOOMR.plugins.OpenTelemetry.getTracer("my-library-name", "0.1.0");
+var tracer = window.BOOMR.plugins.OpenTelemetry.getTracer("my-library-name");
 
 var span = tracer.startSpan("doSomething", { parent: tracer.getCurrentSpan() });
 tracer.withSpan(span2, function() => {

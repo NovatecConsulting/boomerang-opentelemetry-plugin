@@ -1,4 +1,10 @@
 import OpenTelemetryTracingImpl from './impl';
+
+// Global Boomerang instance
+declare global {
+  interface Window { BOOMR: any; }
+}
+
 /**
  * Skeleton template for all boomerang plugins.
  *
@@ -13,7 +19,7 @@ import OpenTelemetryTracingImpl from './impl';
   // A private object to encapsulate all your implementation details
   // This is optional, but the way we recommend you do it.
   const impl = new OpenTelemetryTracingImpl();
-  
+
   //
   // Public exports
   //
@@ -41,7 +47,10 @@ import OpenTelemetryTracingImpl from './impl';
       return this;
     },
 
-    // Any other public methods would be defined here
+    // Executes the specified function within the context of the given span
+    withSpan: impl.withSpan,
+
+    // Getting an OpenTelemetry tracer instace for manual tracing
     getTracer: impl.getTracer,
 
     is_complete: () => {
