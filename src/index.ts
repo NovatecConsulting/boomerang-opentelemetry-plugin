@@ -53,6 +53,9 @@ declare global {
     // Getting an OpenTelemetry tracer instace for manual tracing
     getTracer: impl.getTracer,
 
+    // Returns the internally used OpenTelemetry API
+    getOpenTelemetryApi: impl.getOpenTelemetryApi,
+
     is_complete: () => {
       // This method should determine if the plugin has completed doing what it
       // needs to do and return true if so or false otherwise

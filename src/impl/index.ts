@@ -1,4 +1,4 @@
-import { context, setSpan, Span } from '@opentelemetry/api';
+import api, { context, setSpan, Span } from '@opentelemetry/api';
 import { AlwaysOnSampler, AlwaysOffSampler, TraceIdRatioBasedSampler } from '@opentelemetry/core';
 import { WebTracerProvider } from '@opentelemetry/web';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
@@ -16,24 +16,19 @@ import { PluginProperties, ContextFunction } from '../types';
  */
 export default class OpenTelemetryTracingImpl {
 
-  private props: PluginProperties;
+  private props: PluginProperties = {
+    samplingRate: 1,
+    corsUrls: [],
+    collectorConfiguration: undefined,
+    consoleOnly: false,
+  };
 
+  private initialized: boolean = false;
+
+  /** Boomerangs configured beacon_url. */
   private beaconUrl: string;
 
-  private initialized: boolean;
-
   private traceProvider: WebTracerProvider;
-
-  constructor() {
-    // set default properties
-    this.props = {
-      samplingRate: 1,
-      corsUrls: [],
-      collectorConfiguration: undefined,
-      consoleOnly: false,
-    };
-    this.initialized = false;
-  }
 
   public register = () => {
     // return if already initialized
@@ -95,16 +90,32 @@ export default class OpenTelemetryTracingImpl {
 
   public getProps = () => this.props;
 
-  public setBeaconUrl = (url: string) => (this.beaconUrl = url);
+  public getOpenTelemetryApi = () => {
+    return api;
+  };
 
+  public setBeaconUrl = (url: string) => {
+    this.beaconUrl = url;
+  };
+
+  /**
+   * Returns a tracer instance from the used OpenTelemetry SDK.
+   */
   public getTracer = (name: string, version?: string) => {
     return this.traceProvider.getTracer(name, version);
-  }
+  };
 
-  withSpan = (span: Span, fn: ContextFunction) => {
+  /**
+   * Convenient function for executing a functions in the context of
+   * a specified span.
+   */
+  public withSpan = (span: Span, fn: ContextFunction) => {
     context.with(setSpan(context.active(), span), fn);
   };
 
+  /**
+   * Derives the collector Url based on the beacon one.
+   */
   private collectorUrlFromBeaconUrl = () => {
     if (this.beaconUrl) {
       const indexOf = this.beaconUrl.lastIndexOf('/beacon');
@@ -115,10 +126,12 @@ export default class OpenTelemetryTracingImpl {
     return undefined;
   };
 
+  /**
+   * Resolves a sampler implementation based on the specified sample rate.
+   */
   private resolveSampler = () => {
     const { samplingRate } = this.props;
 
-    // if not [0, 1] then failback to default
     if (samplingRate < 0) {
       return new AlwaysOffSampler();
     } else if (samplingRate > 1) {
