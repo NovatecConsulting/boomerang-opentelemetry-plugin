@@ -88,3 +88,9 @@ The plugin also provides direct access to the OpenTelemetry API via the followin
 ### Asynchronous inclusion of Boomerang
 
 Make sure to check that `window.BOOMR.plugins.OpenTelemetry` actually exists prior to using it in your code in case you load boomerang asynchronously.
+
+## Development
+
+During development, the plugin can be compiled and automatically recompiled whenever a file is changed using: `yarn watch`
+
+The plugin can be built using the command: `yarn build`
