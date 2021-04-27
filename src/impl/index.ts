@@ -7,6 +7,7 @@ import { CollectorTraceExporter, CollectorExporterNodeConfigBase } from '@opente
 import { ConsoleSpanExporter, SimpleSpanProcessor } from '@opentelemetry/tracing';
 import { B3Propagator } from '@opentelemetry/propagator-b3';
 import { XMLHttpRequestInstrumentation } from '@opentelemetry/instrumentation-xml-http-request';
+import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
 import { PluginProperties, ContextFunction } from '../types';
 
 /**
@@ -21,6 +22,10 @@ export default class OpenTelemetryTracingImpl {
     corsUrls: [],
     collectorConfiguration: undefined,
     consoleOnly: false,
+    plugins: {
+      instrument_fetch: true,
+      instrument_xhr: true
+    }
   };
 
   private initialized: boolean = false;
@@ -50,12 +55,7 @@ export default class OpenTelemetryTracingImpl {
 
     // registering instrumentations / plugins
     registerInstrumentations({
-      instrumentations: [
-        // XMLHttpRequest Instrumentation for web plugin
-        new XMLHttpRequestInstrumentation({
-          propagateTraceHeaderCorsUrls: this.props.corsUrls,
-        }),
-      ],
+      instrumentations: this.getInstrumentationPlugins(),
       // @ts-ignore - has to be clearified why typescript doesn't like this line
       tracerProvider: providerWithZone,
     });
@@ -111,6 +111,25 @@ export default class OpenTelemetryTracingImpl {
    */
   public withSpan = (span: Span, fn: ContextFunction) => {
     context.with(setSpan(context.active(), span), fn);
+  };
+
+  private getInstrumentationPlugins = () => {
+    const { plugins: { instrument_fetch, instrument_xhr }, corsUrls } = this.props;
+    const plugins: any = [];
+
+    // XMLHttpRequest Instrumentation for web plugin
+    if (instrument_xhr) {
+      plugins.push(new XMLHttpRequestInstrumentation({
+        propagateTraceHeaderCorsUrls: this.props.corsUrls,
+      }));
+    }
+
+    // Instrumentation for the fetch API
+    if (instrument_fetch) {
+      plugins.push(new FetchInstrumentation());
+    }
+
+    return plugins;
   };
 
   /**

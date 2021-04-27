@@ -45,6 +45,11 @@ BOOMR.init({
       url: 'http://localhost:55681/v1/trace' // an optional url for an OpenTelemetry collector
       headers: {}, // an optional object containing custom headers to be sent with each request
       concurrencyLimit: 10, // an optional limit on pending requests
+      serviceName: 'my-application' // an optional string for defining the service name used in the spans
+    },
+    plugins: {
+      instrument_fetch: true,
+      instrument_xhr: true
     }
   }
 });
@@ -57,6 +62,9 @@ Available options are:
 | `corsUrls` | Array of CORS URLs to take into consideration when propagating trace information. By default, CORS URLs are excluded from the propagation. | `[]` |
 | `collectorConfiguration` | Object that defines the OpenTelemetry collector configuration, like the URL to send spans to. See [CollectorExporterNodeConfigBase](https://www.npmjs.com/package/@opentelemetry/exporter-collector) interface for all options. | `undefined` |
 | `consoleOnly` | If `true` spans will be logged on the console and not sent to the collector endpoint. | `false` |
+| `plugins` | Object for enabling and disabling OpenTelemetry plugins. |  |
+| `plugins.instrument_fetch` | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-instrumentation-fetch) for insturmentation of the fetch API. | `true` |
+| `plugins.instrument_xhr` | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-instrumentation-xml-http-request) for insturmentation of the XMLHttpRequest API. | `true` |
 
 ## Manual Instrumentation
 

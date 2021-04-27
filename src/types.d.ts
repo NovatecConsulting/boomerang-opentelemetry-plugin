@@ -6,6 +6,12 @@ export interface PluginProperties {
     corsUrls: PropagateTraceHeaderCorsUrls;
     collectorConfiguration: CollectorExporterNodeConfigBase | undefined;
     consoleOnly: boolean;
+    plugins: OTPluginProperties;
+}
+
+export interface OTPluginProperties {
+    instrument_fetch: boolean;
+    instrument_xhr: boolean;
 }
 
 export type ContextFunction = () => void;
