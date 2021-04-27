@@ -8,6 +8,7 @@ import { ConsoleSpanExporter, SimpleSpanProcessor } from '@opentelemetry/tracing
 import { B3Propagator } from '@opentelemetry/propagator-b3';
 import { XMLHttpRequestInstrumentation } from '@opentelemetry/instrumentation-xml-http-request';
 import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
+import { DocumentLoadInstrumentation } from '@opentelemetry/instrumentation-document-load';
 import { PluginProperties, ContextFunction } from '../types';
 
 /**
@@ -24,7 +25,8 @@ export default class OpenTelemetryTracingImpl {
     consoleOnly: false,
     plugins: {
       instrument_fetch: true,
-      instrument_xhr: true
+      instrument_xhr: true,
+      instrument_document_load: true
     }
   };
 
@@ -114,22 +116,27 @@ export default class OpenTelemetryTracingImpl {
   };
 
   private getInstrumentationPlugins = () => {
-    const { plugins: { instrument_fetch, instrument_xhr }, corsUrls } = this.props;
-    const plugins: any = [];
+    const { plugins, corsUrls } = this.props;
+    const insrumentations: any = [];
 
     // XMLHttpRequest Instrumentation for web plugin
-    if (instrument_xhr) {
-      plugins.push(new XMLHttpRequestInstrumentation({
-        propagateTraceHeaderCorsUrls: this.props.corsUrls,
+    if (plugins.instrument_xhr !== false) {
+      insrumentations.push(new XMLHttpRequestInstrumentation({
+        propagateTraceHeaderCorsUrls: corsUrls,
       }));
     }
 
     // Instrumentation for the fetch API
-    if (instrument_fetch) {
-      plugins.push(new FetchInstrumentation());
+    if (plugins.instrument_fetch !== false) {
+      insrumentations.push(new FetchInstrumentation());
     }
 
-    return plugins;
+    // Instrumentation for the document on load (initial request)
+    if (plugins.instrument_document_load !== false) {
+      insrumentations.push(new DocumentLoadInstrumentation());
+    }
+
+    return insrumentations;
   };
 
   /**

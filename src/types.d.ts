@@ -12,6 +12,7 @@ export interface PluginProperties {
 export interface OTPluginProperties {
     instrument_fetch: boolean;
     instrument_xhr: boolean;
+    instrument_document_load: boolean;
 }
 
 export type ContextFunction = () => void;

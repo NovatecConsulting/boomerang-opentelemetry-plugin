@@ -14,6 +14,7 @@
   "dependencies": {
     "@opentelemetry/context-zone": "^0.18.2",
     "@opentelemetry/exporter-collector": "^0.18.2",
+    "@opentelemetry/instrumentation-document-load": "^0.15.0",
     "@opentelemetry/instrumentation-fetch": "^0.18.2",
     "@opentelemetry/instrumentation-xml-http-request": "^0.18.2",
     "@opentelemetry/propagator-b3": "^0.18.2",
