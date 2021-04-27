@@ -16,6 +16,7 @@
     "@opentelemetry/exporter-collector": "^0.18.2",
     "@opentelemetry/instrumentation-document-load": "^0.15.0",
     "@opentelemetry/instrumentation-fetch": "^0.18.2",
+    "@opentelemetry/instrumentation-user-interaction": "^0.15.0",
     "@opentelemetry/instrumentation-xml-http-request": "^0.18.2",
     "@opentelemetry/propagator-b3": "^0.18.2",
     "@opentelemetry/web": "^0.18.2"

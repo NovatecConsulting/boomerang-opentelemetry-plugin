@@ -924,6 +924,16 @@
     "@opentelemetry/semantic-conventions" "^0.18.2"
     "@opentelemetry/web" "^0.18.2"
 
+"@opentelemetry/instrumentation-user-interaction@^0.15.0":
+  version "0.15.0"
+  resolved "https://registry.yarnpkg.com/@opentelemetry/instrumentation-user-interaction/-/instrumentation-user-interaction-0.15.0.tgz#e7c84c68652f20e68d9db1beb28cef62c04be258"
+  integrity sha512-jHAVM0GidSsDqG6rDdwHhnb+hzmEZzW45sYkO97AU9KkBPMssTuXLf1Yn2813uI36B7/f1DzPbWBlDh1xlRncA==
+  dependencies:
+    "@opentelemetry/api" "^0.18.0"
+    "@opentelemetry/core" "^0.18.0"
+    "@opentelemetry/instrumentation" "^0.18.0"
+    "@opentelemetry/web" "^0.18.0"
+
 "@opentelemetry/instrumentation-xml-http-request@^0.18.2":
   version "0.18.2"
   resolved "https://registry.yarnpkg.com/@opentelemetry/instrumentation-xml-http-request/-/instrumentation-xml-http-request-0.18.2.tgz#dfb7c34d22b8c613c6090c15baaabba1acc342be"

@@ -9,6 +9,7 @@ import { B3Propagator } from '@opentelemetry/propagator-b3';
 import { XMLHttpRequestInstrumentation } from '@opentelemetry/instrumentation-xml-http-request';
 import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
 import { DocumentLoadInstrumentation } from '@opentelemetry/instrumentation-document-load';
+import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-user-interaction';
 import { PluginProperties, ContextFunction } from '../types';
 
 /**
@@ -26,7 +27,8 @@ export default class OpenTelemetryTracingImpl {
     plugins: {
       instrument_fetch: true,
       instrument_xhr: true,
-      instrument_document_load: true
+      instrument_document_load: true,
+      instrument_user_interaction: true
     }
   };
 
@@ -134,6 +136,11 @@ export default class OpenTelemetryTracingImpl {
     // Instrumentation for the document on load (initial request)
     if (plugins.instrument_document_load !== false) {
       insrumentations.push(new DocumentLoadInstrumentation());
+    }
+    
+    // Instrumentation for user interactions
+    if (plugins.instrument_user_interaction !== false) {
+      insrumentations.push(new UserInteractionInstrumentation());
     }
 
     return insrumentations;

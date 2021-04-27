@@ -49,7 +49,9 @@ BOOMR.init({
     },
     plugins: {
       instrument_fetch: true,
-      instrument_xhr: true
+      instrument_xhr: true,
+      instrument_document_load: true,
+      instrument_user_interaction: true
     }
   }
 });
@@ -65,6 +67,8 @@ Available options are:
 | `plugins` | Object for enabling and disabling OpenTelemetry plugins. |  |
 | `plugins.instrument_fetch` | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-instrumentation-fetch) for insturmentation of the fetch API. | `true` |
 | `plugins.instrument_xhr` | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-instrumentation-xml-http-request) for insturmentation of the XMLHttpRequest API. | `true` |
+| `plugins.instrument_document_load` | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-document-load) for insturmentation of the document load (initial request). | `true` |
+| `plugins.instrument_user_interaction` | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-user-interaction) for insturmentation of user interactions. | `true` |
 
 ## Manual Instrumentation
 
