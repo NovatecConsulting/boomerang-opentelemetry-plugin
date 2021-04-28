@@ -75,7 +75,7 @@ Available options are:
 The boomerang OpenTelemetry Plugin also exposes a part of the OpenTelemetry tracing API for manual instrumentation:
 
 ```
-const tracer = window.BOOMR.plugins.OpenTelemetry.getTracer("my-library-name");
+const tracer = window.BOOMR.plugins.OpenTelemetry.getTracer("my-library-name", "v1.0");
 
 const span = tracer.startSpan("doSomething");
 // do something
@@ -86,7 +86,7 @@ For execution of functions within a span context, the plugin provides the follow
 
 ```
 const OT = window.BOOMR.plugins.OpenTelemetry;
-const tracer = OT.getTracer("my-library-name");
+const tracer = OT.getTracer("my-library-name", "v1.0");
 
 const span = tracer.startSpan("doSomething");
 OT.withSpan(span, () => {
