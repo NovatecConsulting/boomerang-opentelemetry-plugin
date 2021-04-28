@@ -4,7 +4,7 @@ import { WebTracerProvider } from '@opentelemetry/web';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { ZoneContextManager } from '@opentelemetry/context-zone';
 import { CollectorTraceExporter, CollectorExporterNodeConfigBase } from '@opentelemetry/exporter-collector';
-import { ConsoleSpanExporter, SimpleSpanProcessor } from '@opentelemetry/tracing';
+import { ConsoleSpanExporter, SimpleSpanProcessor, BatchSpanProcessor } from '@opentelemetry/tracing';
 import { B3Propagator } from '@opentelemetry/propagator-b3';
 import { XMLHttpRequestInstrumentation } from '@opentelemetry/instrumentation-xml-http-request';
 import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
@@ -19,7 +19,7 @@ import { PluginProperties, ContextFunction } from '../types';
  */
 export default class OpenTelemetryTracingImpl {
 
-  private props: PluginProperties = {
+  private defaultProperties : PluginProperties  = {
     samplingRate: 1,
     corsUrls: [],
     collectorConfiguration: undefined,
@@ -29,7 +29,17 @@ export default class OpenTelemetryTracingImpl {
       instrument_xhr: true,
       instrument_document_load: true,
       instrument_user_interaction: true
+    },
+    exporter: {
+      maxQueueSize: 100,
+      maxExportBatchSize: 10,
+      scheduledDelayMillis: 500,
+      exportTimeoutMillis: 30000,
     }
+  };
+
+  private props: PluginProperties = {
+    ...this.defaultProperties
   };
 
   private initialized: boolean = false;
@@ -75,7 +85,10 @@ export default class OpenTelemetryTracingImpl {
       };
 
       const exporter = new CollectorTraceExporter(collectorOptions);
-      providerWithZone.addSpanProcessor(new SimpleSpanProcessor(exporter));
+      providerWithZone.addSpanProcessor(new BatchSpanProcessor(exporter, {
+        ...this.defaultProperties.exporter,
+        ...this.props.exporter
+      }));
     } else {
       // register console exporter for logging all recorded traces to the console
       providerWithZone.addSpanProcessor(
@@ -137,7 +150,7 @@ export default class OpenTelemetryTracingImpl {
     if (plugins.instrument_document_load !== false) {
       insrumentations.push(new DocumentLoadInstrumentation());
     }
-    
+
     // Instrumentation for user interactions
     if (plugins.instrument_user_interaction !== false) {
       insrumentations.push(new UserInteractionInstrumentation());

@@ -57,6 +57,12 @@ BOOMR.init({
       instrument_xhr: true,
       instrument_document_load: true,
       instrument_user_interaction: true
+    },
+    exporter: {
+      maxQueueSize: 100,
+      maxExportBatchSize: 10,
+      scheduledDelayMillis: 500,
+      exportTimeoutMillis: 30000,
     }
   }
 });
@@ -74,6 +80,11 @@ Available options are:
 | `plugins.instrument_xhr` | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-instrumentation-xml-http-request) for insturmentation of the XMLHttpRequest API. | `true` |
 | `plugins.instrument_document_load` | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-document-load) for insturmentation of the document load (initial request). | `true` |
 | `plugins.instrument_user_interaction` | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-user-interaction) for insturmentation of user interactions. | `true` |
+| `exporter` | Object for configuring the span exporter. Only used if `consoleOnly` is not enabled. ||
+| `exporter.maxQueueSize` | The maximum queue size. After the size is reached spans are dropped. | `100` |
+| `exporter.maxExportBatchSize` | The maximum batch size of every export. It must be smaller or equal to `maxQueueSize`. | `10` |
+| `exporter.scheduledDelayMillis` | The interval between two consecutive exports. | `500` |
+| `exporter.exportTimeoutMillis` | How long the export can run before it is cancelled. | `30000` |
 
 ## Manual Instrumentation
 
