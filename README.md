@@ -57,6 +57,10 @@ BOOMR.init({
       instrument_xhr: true,
       instrument_document_load: true,
       instrument_user_interaction: true
+    },
+    commonAttributes: {
+        "application": "demo-app",
+        "stage": "prod"
     }
   }
 });
@@ -74,6 +78,7 @@ Available options are:
 | `plugins.instrument_xhr` | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-instrumentation-xml-http-request) for insturmentation of the XMLHttpRequest API. | `true` |
 | `plugins.instrument_document_load` | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-document-load) for insturmentation of the document load (initial request). | `true` |
 | `plugins.instrument_user_interaction` | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-user-interaction) for insturmentation of user interactions. | `true` |
+| `commonAttributes` | An Object defining common span attributes which will be added to each recorded span. | `{}` |
 
 ## Manual Instrumentation
 

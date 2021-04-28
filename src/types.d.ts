@@ -7,6 +7,11 @@ export interface PluginProperties {
     collectorConfiguration: CollectorExporterNodeConfigBase | undefined;
     consoleOnly: boolean;
     plugins: OTPluginProperties;
+    commonAttributes: StringMap;
+}
+
+export interface StringMap {
+    [key: string]: string;
 }
 
 export interface OTPluginProperties {

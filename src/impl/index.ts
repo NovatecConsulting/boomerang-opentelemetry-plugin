@@ -4,7 +4,7 @@ import { WebTracerProvider } from '@opentelemetry/web';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { ZoneContextManager } from '@opentelemetry/context-zone';
 import { CollectorTraceExporter, CollectorExporterNodeConfigBase } from '@opentelemetry/exporter-collector';
-import { ConsoleSpanExporter, SimpleSpanProcessor } from '@opentelemetry/tracing';
+import { ConsoleSpanExporter, SimpleSpanProcessor, Tracer } from '@opentelemetry/tracing';
 import { B3Propagator } from '@opentelemetry/propagator-b3';
 import { XMLHttpRequestInstrumentation } from '@opentelemetry/instrumentation-xml-http-request';
 import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
@@ -29,7 +29,8 @@ export default class OpenTelemetryTracingImpl {
       instrument_xhr: true,
       instrument_document_load: true,
       instrument_user_interaction: true
-    }
+    },
+    commonAttributes: {}
   };
 
   private initialized: boolean = false;
@@ -44,6 +45,9 @@ export default class OpenTelemetryTracingImpl {
     if (this.initialized) {
       return;
     }
+
+    // instrument the tracer class for injecting default attributes
+    this.instrumentTracerClass();
 
     // create provider
     const providerWithZone = new WebTracerProvider({
@@ -103,6 +107,29 @@ export default class OpenTelemetryTracingImpl {
   };
 
   /**
+   * Patching the tracer class for injecting default attributes.
+   */
+  private instrumentTracerClass = () => {
+    const {commonAttributes} = this.props;
+    // don't patch the function if no attributes are defined
+    if (Object.keys(commonAttributes).length <= 0) {
+      return;
+    }
+
+    const originalStartSpanFunction = Tracer.prototype.startSpan;
+
+    Tracer.prototype.startSpan = function () {
+      const span: Span = originalStartSpanFunction.apply(this, arguments);
+
+      if (commonAttributes) {
+        span.setAttributes(commonAttributes);
+      }
+
+      return span;
+    };
+  };
+
+  /**
    * Returns a tracer instance from the used OpenTelemetry SDK.
    */
   public getTracer = (name: string, version?: string) => {
@@ -137,7 +164,7 @@ export default class OpenTelemetryTracingImpl {
     if (plugins.instrument_document_load !== false) {
       insrumentations.push(new DocumentLoadInstrumentation());
     }
-    
+
     // Instrumentation for user interactions
     if (plugins.instrument_user_interaction !== false) {
       insrumentations.push(new UserInteractionInstrumentation());
