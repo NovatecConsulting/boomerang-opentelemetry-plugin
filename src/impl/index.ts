@@ -1,18 +1,16 @@
-import { ZoneContextManager } from '@opentelemetry/context-zone';
-import { ALWAYS_SAMPLER, B3Propagator, NEVER_SAMPLER, ProbabilitySampler } from '@opentelemetry/core';
-import { CollectorExporter, CollectorExporterConfig } from '@opentelemetry/exporter-collector';
-import { XMLHttpRequestPlugin } from '@opentelemetry/plugin-xml-http-request';
-import { PropagateTraceHeaderCorsUrls } from '@opentelemetry/plugin-xml-http-request/build/src/types';
-import { ConsoleSpanExporter, SimpleSpanProcessor } from '@opentelemetry/tracing';
+import api, { context, setSpan, Span } from '@opentelemetry/api';
+import { AlwaysOnSampler, AlwaysOffSampler, TraceIdRatioBasedSampler } from '@opentelemetry/core';
 import { WebTracerProvider } from '@opentelemetry/web';
-import api from '@opentelemetry/api';
-
-export interface TracingProperties {
-  samplingRate: number;
-  corsUrls: PropagateTraceHeaderCorsUrls;
-  collectorConfiguration: CollectorExporterConfig | undefined;
-  consoleOnly: boolean;
-}
+import { registerInstrumentations } from '@opentelemetry/instrumentation';
+import { ZoneContextManager } from '@opentelemetry/context-zone';
+import { CollectorTraceExporter, CollectorExporterNodeConfigBase } from '@opentelemetry/exporter-collector';
+import { ConsoleSpanExporter, SimpleSpanProcessor } from '@opentelemetry/tracing';
+import { B3Propagator } from '@opentelemetry/propagator-b3';
+import { XMLHttpRequestInstrumentation } from '@opentelemetry/instrumentation-xml-http-request';
+import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
+import { DocumentLoadInstrumentation } from '@opentelemetry/instrumentation-document-load';
+import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-user-interaction';
+import { PluginProperties, ContextFunction } from '../types';
 
 /**
  * TODOs:
@@ -20,58 +18,75 @@ export interface TracingProperties {
  * - allow propagator definition via props
  */
 export default class OpenTelemetryTracingImpl {
-  private props: TracingProperties;
-  private beaconUrl: string;
-  private initialized: boolean;
 
-  constructor() {
-    // set default properties
-    this.props = {
-      samplingRate: 1,
-      corsUrls: [],
-      collectorConfiguration: undefined,
-      consoleOnly: false,
-    };
-    this.initialized = false;
-  }
+  private props: PluginProperties = {
+    samplingRate: 1,
+    corsUrls: [],
+    collectorConfiguration: undefined,
+    consoleOnly: false,
+    plugins: {
+      instrument_fetch: true,
+      instrument_xhr: true,
+      instrument_document_load: true,
+      instrument_user_interaction: true
+    }
+  };
+
+  private initialized: boolean = false;
+
+  /** Boomerangs configured beacon_url. */
+  private beaconUrl: string;
+
+  private traceProvider: WebTracerProvider;
 
   public register = () => {
+    // return if already initialized
     if (this.initialized) {
       return;
     }
 
-    // provider with the only one available plugin for now
-    const provider = new WebTracerProvider({
-      sampler: this.resolveSampler(),
-      plugins: [
-        new XMLHttpRequestPlugin({
-          propagateTraceHeaderCorsUrls: this.props.corsUrls,
-        }),
-      ],
+    // create provider
+    const providerWithZone = new WebTracerProvider({
+      sampler: this.resolveSampler()
+    });
+
+    providerWithZone.register({
+      // changing default contextManager to use ZoneContextManager - supports asynchronous operations
+      contextManager: new ZoneContextManager(),
+      // using B3 context propagation format
+      propagator: new B3Propagator(),
+    });
+
+    // registering instrumentations / plugins
+    registerInstrumentations({
+      instrumentations: this.getInstrumentationPlugins(),
+      // @ts-ignore - has to be clearified why typescript doesn't like this line
+      tracerProvider: providerWithZone,
     });
 
     // use OT collector if logging to console is not enabled
     if (!this.props.consoleOnly) {
-      // jaeger exporter
-      provider.addSpanProcessor(
-        new SimpleSpanProcessor(
-          new CollectorExporter({
-            url: this.collectorUrlFromBeaconUrl(),
-            ...this.props.collectorConfiguration,
-          })
-        )
-      );
+      // register opentelemetry collector exporter
+      const collectorOptions: CollectorExporterNodeConfigBase = {
+        url: this.collectorUrlFromBeaconUrl(),
+        headers: {}, // an optional object containing custom headers to be sent with each request
+        concurrencyLimit: 10, // an optional limit on pending requests
+        ...this.props.collectorConfiguration,
+      };
+
+      const exporter = new CollectorTraceExporter(collectorOptions);
+      providerWithZone.addSpanProcessor(new SimpleSpanProcessor(exporter));
     } else {
-      provider.addSpanProcessor(
+      // register console exporter for logging all recorded traces to the console
+      providerWithZone.addSpanProcessor(
         new SimpleSpanProcessor(new ConsoleSpanExporter())
       );
     }
 
-    // register and set as initalized
-    provider.register({
-      contextManager: new ZoneContextManager(),
-      propagator: new B3Propagator(),
-    });
+    // store the webtracer
+    this.traceProvider = providerWithZone;
+
+    // mark plugin initalized
     this.initialized = true;
   };
 
@@ -79,12 +94,61 @@ export default class OpenTelemetryTracingImpl {
 
   public getProps = () => this.props;
 
-  public setBeaconUrl = (url: string) => (this.beaconUrl = url);
+  public getOpenTelemetryApi = () => {
+    return api;
+  };
 
-  public getTracer(name : string, version?: string) {
-    return api.trace.getTracer(name,version);
-  }
+  public setBeaconUrl = (url: string) => {
+    this.beaconUrl = url;
+  };
 
+  /**
+   * Returns a tracer instance from the used OpenTelemetry SDK.
+   */
+  public getTracer = (name: string, version?: string) => {
+    return this.traceProvider.getTracer(name, version);
+  };
+
+  /**
+   * Convenient function for executing a functions in the context of
+   * a specified span.
+   */
+  public withSpan = (span: Span, fn: ContextFunction) => {
+    context.with(setSpan(context.active(), span), fn);
+  };
+
+  private getInstrumentationPlugins = () => {
+    const { plugins, corsUrls } = this.props;
+    const insrumentations: any = [];
+
+    // XMLHttpRequest Instrumentation for web plugin
+    if (plugins.instrument_xhr !== false) {
+      insrumentations.push(new XMLHttpRequestInstrumentation({
+        propagateTraceHeaderCorsUrls: corsUrls,
+      }));
+    }
+
+    // Instrumentation for the fetch API
+    if (plugins.instrument_fetch !== false) {
+      insrumentations.push(new FetchInstrumentation());
+    }
+
+    // Instrumentation for the document on load (initial request)
+    if (plugins.instrument_document_load !== false) {
+      insrumentations.push(new DocumentLoadInstrumentation());
+    }
+    
+    // Instrumentation for user interactions
+    if (plugins.instrument_user_interaction !== false) {
+      insrumentations.push(new UserInteractionInstrumentation());
+    }
+
+    return insrumentations;
+  };
+
+  /**
+   * Derives the collector Url based on the beacon one.
+   */
   private collectorUrlFromBeaconUrl = () => {
     if (this.beaconUrl) {
       const indexOf = this.beaconUrl.lastIndexOf('/beacon');
@@ -95,16 +159,18 @@ export default class OpenTelemetryTracingImpl {
     return undefined;
   };
 
+  /**
+   * Resolves a sampler implementation based on the specified sample rate.
+   */
   private resolveSampler = () => {
     const { samplingRate } = this.props;
 
-    // if not [0, 1] then failback to default
-    if (samplingRate === 0) {
-      return NEVER_SAMPLER;
-    } else if (samplingRate === 1) {
-      return ALWAYS_SAMPLER;
-    } else if (samplingRate > 0 && samplingRate < 1) {
-      return new ProbabilitySampler(samplingRate);
+    if (samplingRate < 0) {
+      return new AlwaysOffSampler();
+    } else if (samplingRate > 1) {
+      return new AlwaysOnSampler();
+    } else {
+      return new TraceIdRatioBasedSampler(samplingRate);
     }
   };
 }

@@ -1,36 +1,39 @@
 {
   "name": "boomerang-opentelemetry-plugin",
-  "version": "0.7.0",
+  "version": "0.18.2",
   "description": "This is a Boomerang plugin for collecting spans using the OpenTelemetry framework and exporting them, e.g., to an OpenTelemetry collector.",
   "repository": "https://github.com/NovatecConsulting/boomerang-opentelemetry-plugin",
   "license": "Apache-2.0",
   "scripts": {
-    "build": "webpack"
+    "build": "webpack --config webpack.prod.js",
+    "watch": "webpack --watch --config webpack.dev.js"
   },
   "scripts-info": {
     "build": "Create development bundle."
   },
   "dependencies": {
-    "@babel/runtime": "^7.11.2",
-    "@opentelemetry/api": "0.9.0",
-    "@opentelemetry/context-zone": "0.9.0",
-    "@opentelemetry/core": "0.9.0",
-    "@opentelemetry/exporter-collector": "0.9.0",
-    "@opentelemetry/plugin-xml-http-request": "0.9.0",
-    "@opentelemetry/tracing": "0.9.0",
-    "@opentelemetry/web": "0.9.0"
+    "@opentelemetry/context-zone": "^0.19.0",
+    "@opentelemetry/exporter-collector": "^0.19.0",
+    "@opentelemetry/instrumentation-document-load": "^0.16.0",
+    "@opentelemetry/instrumentation-fetch": "^0.19.0",
+    "@opentelemetry/instrumentation-user-interaction": "^0.16.0",
+    "@opentelemetry/instrumentation-xml-http-request": "^0.19.0",
+    "@opentelemetry/propagator-b3": "^0.19.0",
+    "@opentelemetry/web": "^0.19.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.10.5",
     "@babel/core": "^7.11.4",
     "@babel/plugin-transform-runtime": "^7.11.0",
     "@babel/preset-env": "^7.11.0",
+    "@babel/runtime": "^7.11.2",
     "babel-loader": "^8.1.0",
     "prettier": "^2.0.5",
     "ts-loader": "^7.0.1",
     "typescript": "^3.8.3",
     "webpack": "^4.43.0",
-    "webpack-cli": "^3.3.11"
+    "webpack-cli": "^3.3.11",
+    "webpack-merge": "^5.7.3"
   },
   "prettier": {
     "singleQuote": true
