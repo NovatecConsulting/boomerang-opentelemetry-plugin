@@ -10,7 +10,9 @@ The plugin version always corresponds to the opentelemetry-js version that's bei
 
 Currently implemented features:
 
-* Automatic instrumentation of the asynhrounous XMLHttpRequest API, including B3 header propagation. [More details ↗](https://www.npmjs.com/package/@opentelemetry/instrumentation-xml-http-request)
+* Automatic instrumentation of the asynhrounous XMLHttpRequest API and Fetch API, including B3 header propagation. [More details ↗](https://www.npmjs.com/package/@opentelemetry/instrumentation-xml-http-request)
+* Automatic tracing of the initial page load including resource timings.
+* Automatic instrumentation of user interactions.
 * Automatic local context propagation using _Zone Context Manager_. [More details ↗](https://www.npmjs.com/package/@opentelemetry/context-zone)
 * Exporting collected spans to an OpenTelemetry collector.
 * Providing access to the OpenTelemtry Tracing-API for manual instrumentation.
@@ -21,6 +23,9 @@ A list of OpenTelemetry instrumentation and non-instrumentation plugins that are
 
 * [@opentelemetry/exporter-collector](https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-exporter-collector)
 * [@opentelemetry/instrumentation-xml-http-request](https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-instrumentation-xml-http-request)
+* [@opentelemetry/instrumentation-fetch](https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-instrumentation-fetch)
+* [@opentelemetry/instrumentation-document-load](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-document-load)
+* [@opentelemetry/instrumentation-user-interaction](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-user-interaction)
 
 ## Setup
 
