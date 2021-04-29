@@ -8,6 +8,11 @@ export interface PluginProperties {
     consoleOnly: boolean;
     plugins: OTPluginProperties;
     exporter: OTExportProperties;
+    commonAttributes: StringMap;
+}
+
+export interface StringMap {
+    [key: string]: string;
 }
 
 export interface OTPluginProperties {

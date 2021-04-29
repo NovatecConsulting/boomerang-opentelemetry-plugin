@@ -63,6 +63,10 @@ BOOMR.init({
       maxExportBatchSize: 10,
       scheduledDelayMillis: 500,
       exportTimeoutMillis: 30000,
+    },
+    commonAttributes: {
+        "application": "demo-app",
+        "stage": "prod"
     }
   }
 });
@@ -85,6 +89,7 @@ Available options are:
 | `exporter.maxExportBatchSize` | The maximum batch size of every export. It must be smaller or equal to `maxQueueSize`. | `10` |
 | `exporter.scheduledDelayMillis` | The interval between two consecutive exports. | `500` |
 | `exporter.exportTimeoutMillis` | How long the export can run before it is cancelled. | `30000` |
+| `commonAttributes` | An Object defining common span attributes which will be added to each recorded span. | `{}` |
 
 ## Manual Instrumentation
 

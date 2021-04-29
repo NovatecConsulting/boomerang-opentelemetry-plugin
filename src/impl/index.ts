@@ -4,7 +4,7 @@ import { WebTracerProvider } from '@opentelemetry/web';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { ZoneContextManager } from '@opentelemetry/context-zone';
 import { CollectorTraceExporter, CollectorExporterNodeConfigBase } from '@opentelemetry/exporter-collector';
-import { ConsoleSpanExporter, SimpleSpanProcessor, BatchSpanProcessor } from '@opentelemetry/tracing';
+import { ConsoleSpanExporter, SimpleSpanProcessor, BatchSpanProcessor, Tracer } from '@opentelemetry/tracing';
 import { B3Propagator } from '@opentelemetry/propagator-b3';
 import { XMLHttpRequestInstrumentation } from '@opentelemetry/instrumentation-xml-http-request';
 import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
@@ -35,7 +35,8 @@ export default class OpenTelemetryTracingImpl {
       maxExportBatchSize: 10,
       scheduledDelayMillis: 500,
       exportTimeoutMillis: 30000,
-    }
+    },
+    commonAttributes: {}
   };
 
   private props: PluginProperties = {
@@ -54,6 +55,9 @@ export default class OpenTelemetryTracingImpl {
     if (this.initialized) {
       return;
     }
+
+    // instrument the tracer class for injecting default attributes
+    this.instrumentTracerClass();
 
     // create provider
     const providerWithZone = new WebTracerProvider({
@@ -113,6 +117,29 @@ export default class OpenTelemetryTracingImpl {
 
   public setBeaconUrl = (url: string) => {
     this.beaconUrl = url;
+  };
+
+  /**
+   * Patching the tracer class for injecting default attributes.
+   */
+  private instrumentTracerClass = () => {
+    const {commonAttributes} = this.props;
+    // don't patch the function if no attributes are defined
+    if (Object.keys(commonAttributes).length <= 0) {
+      return;
+    }
+
+    const originalStartSpanFunction = Tracer.prototype.startSpan;
+
+    Tracer.prototype.startSpan = function () {
+      const span: Span = originalStartSpanFunction.apply(this, arguments);
+
+      if (commonAttributes) {
+        span.setAttributes(commonAttributes);
+      }
+
+      return span;
+    };
   };
 
   /**
