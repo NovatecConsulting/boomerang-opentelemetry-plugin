@@ -11,6 +11,7 @@ import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
 import { DocumentLoadInstrumentation } from '@opentelemetry/instrumentation-document-load';
 import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-user-interaction';
 import { PluginProperties, ContextFunction } from '../types';
+import prototypePatch from './patchCollectorPrototype';
 
 /**
  * TODOs:
@@ -36,7 +37,8 @@ export default class OpenTelemetryTracingImpl {
       scheduledDelayMillis: 500,
       exportTimeoutMillis: 30000,
     },
-    commonAttributes: {}
+    commonAttributes: {},
+    prototypeExporterPatch: false
   };
 
   private props: PluginProperties = {
@@ -89,6 +91,12 @@ export default class OpenTelemetryTracingImpl {
       };
 
       const exporter = new CollectorTraceExporter(collectorOptions);
+
+      // patches the collector-export in order to be compatible with Prototype
+      if (this.props.prototypeExporterPatch) {
+        prototypePatch();
+      }
+      
       providerWithZone.addSpanProcessor(new BatchSpanProcessor(exporter, {
         ...this.defaultProperties.exporter,
         ...this.props.exporter

@@ -9,6 +9,7 @@ export interface PluginProperties {
     plugins: OTPluginProperties;
     exporter: OTExportProperties;
     commonAttributes: StringMap;
+    prototypeExporterPatch: boolean;
 }
 
 export interface StringMap {

@@ -67,7 +67,8 @@ BOOMR.init({
     commonAttributes: {
         "application": "demo-app",
         "stage": "prod"
-    }
+    },
+    prototypeExporterPatch: false // patches the OpenTelemetry collector-span-exporter in case the Prototype framework is used
   }
 });
 ```
@@ -90,6 +91,7 @@ Available options are:
 | `exporter.scheduledDelayMillis` | The interval between two consecutive exports. | `500` |
 | `exporter.exportTimeoutMillis` | How long the export can run before it is cancelled. | `30000` |
 | `commonAttributes` | An Object defining common span attributes which will be added to each recorded span. | `{}` |
+| `prototypeExporterPatch` | Patches the OpenTelemetry collector-span-exporter, so it is compatible with the Prototype framework. This is only necessary and should only be activated, when the Prototype framework is used. | `false` |
 
 ## Manual Instrumentation
 
