@@ -12,7 +12,7 @@ module.exports = {
       },
       {
         test: /\.m?js$/,
-        exclude: /node_modules\/(?!@?opentelemetry)/,
+        exclude: /node_modules\/(?!@opentelemetry|zone.js)/,
         use: {
           loader: 'babel-loader',
           options: {
