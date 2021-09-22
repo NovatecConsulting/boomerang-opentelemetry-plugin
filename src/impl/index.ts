@@ -1,10 +1,10 @@
-import api, { context, setSpan, Span } from '@opentelemetry/api';
+import api, { context, trace, Span } from '@opentelemetry/api';
 import { AlwaysOnSampler, AlwaysOffSampler, TraceIdRatioBasedSampler } from '@opentelemetry/core';
-import { WebTracerProvider } from '@opentelemetry/web';
+import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { ZoneContextManager } from '@opentelemetry/context-zone';
 import { CollectorTraceExporter, CollectorExporterNodeConfigBase } from '@opentelemetry/exporter-collector';
-import { ConsoleSpanExporter, SimpleSpanProcessor, BatchSpanProcessor, Tracer } from '@opentelemetry/tracing';
+import { ConsoleSpanExporter, SimpleSpanProcessor, BatchSpanProcessor, Tracer } from '@opentelemetry/sdk-trace-base';
 import { B3Propagator } from '@opentelemetry/propagator-b3';
 import { XMLHttpRequestInstrumentation } from '@opentelemetry/instrumentation-xml-http-request';
 import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
@@ -162,7 +162,7 @@ export default class OpenTelemetryTracingImpl {
    * a specified span.
    */
   public withSpan = (span: Span, fn: ContextFunction) => {
-    context.with(setSpan(context.active(), span), fn);
+    context.with(trace.setSpan(context.active(), span), fn);
   };
 
   private getInstrumentationPlugins = () => {
