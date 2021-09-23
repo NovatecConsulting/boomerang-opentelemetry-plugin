@@ -1,6 +1,6 @@
 # Boomerang-OpenTelemetry Plugin
 
-![](https://img.shields.io/badge/OpenTelemetry%20Version-0.19.0-success)
+![](https://img.shields.io/badge/OpenTelemetry%20Version-0.25.0-success)
 
 This is a [Boomerang plugin](https://github.com/akamai/boomerang) for collecting spans using the [OpenTelemetry](https://opentelemetry.io/) framework and exporting them, e.g., to an OpenTelemetry collector.
 The plugin is based on the [opentelemetry-js](https://github.com/open-telemetry/opentelemetry-js) implementation.
@@ -43,14 +43,13 @@ BOOMR.init({
   beacon_url: 'http://localhost:8080/beacon/',
   
   OpenTelemetry: {
-    samplingRate: 0.5, // an optional sampling rate
+    samplingRate: 1.0, // an optional sampling rate
     corsUrls: ['https://my.backend.com'],
     consoleOnly: false, // an optional flag whether spans should only be printed to the console
     collectorConfiguration: {
       url: 'http://localhost:55681/v1/trace' // an optional url for an OpenTelemetry collector
       headers: {}, // an optional object containing custom headers to be sent with each request
       concurrencyLimit: 10, // an optional limit on pending requests
-      serviceName: 'my-application' // an optional string for defining the service name used in the spans
     },
     plugins: {
       instrument_fetch: true,
@@ -68,6 +67,7 @@ BOOMR.init({
         "application": "demo-app",
         "stage": "prod"
     },
+    serviceName: () => BOOMR.getVar("page_name") || "unknown_service", // an optional service name for the spans
     prototypeExporterPatch: false // patches the OpenTelemetry collector-span-exporter in case the Prototype framework is used
   }
 });
@@ -91,6 +91,7 @@ Available options are:
 | `exporter.scheduledDelayMillis` | The interval between two consecutive exports. | `500` |
 | `exporter.exportTimeoutMillis` | How long the export can run before it is cancelled. | `30000` |
 | `commonAttributes` | An Object defining common span attributes which will be added to each recorded span. | `{}` |
+| `serviceName` | A `string` or function which can be used to set the spans' service name. A function can be defined for dynamically providing the service name, e.g. based on Boomerang values. | `undefined` |
 | `prototypeExporterPatch` | Patches the OpenTelemetry collector-span-exporter, so it is compatible with the Prototype framework. This is only necessary and should only be activated, when the Prototype framework is used. | `false` |
 
 ## Manual Instrumentation

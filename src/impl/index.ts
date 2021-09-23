@@ -1,10 +1,27 @@
 import api, { context, trace, Span } from '@opentelemetry/api';
-import { AlwaysOnSampler, AlwaysOffSampler, TraceIdRatioBasedSampler } from '@opentelemetry/core';
-import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
+import {
+  AlwaysOnSampler,
+  AlwaysOffSampler,
+  TraceIdRatioBasedSampler,
+} from '@opentelemetry/core';
+import {
+  WebTracerConfig,
+  WebTracerProvider,
+} from '@opentelemetry/sdk-trace-web';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { ZoneContextManager } from '@opentelemetry/context-zone';
-import { CollectorTraceExporter, CollectorExporterNodeConfigBase } from '@opentelemetry/exporter-collector';
-import { ConsoleSpanExporter, SimpleSpanProcessor, BatchSpanProcessor, Tracer } from '@opentelemetry/sdk-trace-base';
+import {
+  CollectorTraceExporter,
+  CollectorExporterNodeConfigBase,
+} from '@opentelemetry/exporter-collector';
+import {
+  ConsoleSpanExporter,
+  SimpleSpanProcessor,
+  BatchSpanProcessor,
+  Tracer,
+} from '@opentelemetry/sdk-trace-base';
+import { Resource } from '@opentelemetry/resources';
+import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { B3Propagator } from '@opentelemetry/propagator-b3';
 import { XMLHttpRequestInstrumentation } from '@opentelemetry/instrumentation-xml-http-request';
 import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
@@ -19,8 +36,7 @@ import prototypePatch from './patchCollectorPrototype';
  * - allow propagator definition via props
  */
 export default class OpenTelemetryTracingImpl {
-
-  private defaultProperties : PluginProperties  = {
+  private defaultProperties: PluginProperties = {
     samplingRate: 1,
     corsUrls: [],
     collectorConfiguration: undefined,
@@ -29,7 +45,7 @@ export default class OpenTelemetryTracingImpl {
       instrument_fetch: true,
       instrument_xhr: true,
       instrument_document_load: true,
-      instrument_user_interaction: true
+      instrument_user_interaction: true,
     },
     exporter: {
       maxQueueSize: 100,
@@ -38,11 +54,12 @@ export default class OpenTelemetryTracingImpl {
       exportTimeoutMillis: 30000,
     },
     commonAttributes: {},
-    prototypeExporterPatch: false
+    prototypeExporterPatch: false,
+    serviceName: undefined,
   };
 
   private props: PluginProperties = {
-    ...this.defaultProperties
+    ...this.defaultProperties,
   };
 
   private initialized: boolean = false;
@@ -58,13 +75,18 @@ export default class OpenTelemetryTracingImpl {
       return;
     }
 
+    const { serviceName } = this.props;
+
     // instrument the tracer class for injecting default attributes
     this.instrumentTracerClass();
 
+    // the configuration used by the tracer
+    const tracerConfiguration: WebTracerConfig = {
+      sampler: this.resolveSampler(),
+    };
+
     // create provider
-    const providerWithZone = new WebTracerProvider({
-      sampler: this.resolveSampler()
-    });
+    const providerWithZone = new WebTracerProvider(tracerConfiguration);
 
     providerWithZone.register({
       // changing default contextManager to use ZoneContextManager - supports asynchronous operations
@@ -96,11 +118,13 @@ export default class OpenTelemetryTracingImpl {
       if (this.props.prototypeExporterPatch) {
         prototypePatch();
       }
-      
-      providerWithZone.addSpanProcessor(new BatchSpanProcessor(exporter, {
-        ...this.defaultProperties.exporter,
-        ...this.props.exporter
-      }));
+
+      providerWithZone.addSpanProcessor(
+        new BatchSpanProcessor(exporter, {
+          ...this.defaultProperties.exporter,
+          ...this.props.exporter,
+        })
+      );
     } else {
       // register console exporter for logging all recorded traces to the console
       providerWithZone.addSpanProcessor(
@@ -128,10 +152,10 @@ export default class OpenTelemetryTracingImpl {
   };
 
   /**
-   * Patching the tracer class for injecting default attributes.
+   * Patching the tracer class for injecting additional data into spans.
    */
   private instrumentTracerClass = () => {
-    const {commonAttributes} = this.props;
+    const { commonAttributes, serviceName } = this.props;
     // don't patch the function if no attributes are defined
     if (Object.keys(commonAttributes).length <= 0) {
       return;
@@ -142,8 +166,22 @@ export default class OpenTelemetryTracingImpl {
     Tracer.prototype.startSpan = function () {
       const span: Span = originalStartSpanFunction.apply(this, arguments);
 
+      // add common attributes to each span
       if (commonAttributes) {
         span.setAttributes(commonAttributes);
+      }
+
+      // manually set the service name. This is done because otherwise the service name
+      // has to specified when the tracer is initialized and at this time, the service name
+      // might not be set, yet (e.g. when using Boomerang Vars).
+      const resource: Resource = (<any>span).resource;
+      if (resource) {
+        (<any>span).resource = resource.merge(
+          new Resource({
+            [SemanticResourceAttributes.SERVICE_NAME]:
+              serviceName instanceof Function ? serviceName() : serviceName,
+          })
+        );
       }
 
       return span;
@@ -171,9 +209,11 @@ export default class OpenTelemetryTracingImpl {
 
     // XMLHttpRequest Instrumentation for web plugin
     if (plugins.instrument_xhr !== false) {
-      insrumentations.push(new XMLHttpRequestInstrumentation({
-        propagateTraceHeaderCorsUrls: corsUrls,
-      }));
+      insrumentations.push(
+        new XMLHttpRequestInstrumentation({
+          propagateTraceHeaderCorsUrls: corsUrls,
+        })
+      );
     }
 
     // Instrumentation for the fetch API

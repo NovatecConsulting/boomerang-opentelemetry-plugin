@@ -1,4 +1,4 @@
-import { PropagateTraceHeaderCorsUrls } from "@opentelemetry/web";
+import { PropagateTraceHeaderCorsUrls } from "@opentelemetry/sdk-trace-web";
 import { CollectorExporterNodeConfigBase } from "@opentelemetry/exporter-collector";
 
 export interface PluginProperties {
@@ -10,6 +10,7 @@ export interface PluginProperties {
     exporter: OTExportProperties;
     commonAttributes: StringMap;
     prototypeExporterPatch: boolean;
+    serviceName: string | (() => string);
 }
 
 export interface StringMap {
