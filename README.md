@@ -6,6 +6,9 @@ This is a [Boomerang plugin](https://github.com/akamai/boomerang) for collecting
 The plugin is based on the [opentelemetry-js](https://github.com/open-telemetry/opentelemetry-js) implementation.
 The plugin version always corresponds to the opentelemetry-js version that's being used internally.
 
+![alt text](images/example_jaeger_ocelot_eum.png "Example Screenshot of recorded Spans using Jaeger and the Ocelot EUM Server")
+*Example Screenshot of recorded spans using Jaeger and the Ocelot EUM Server*
+
 ## Features
 
 Currently implemented features:
