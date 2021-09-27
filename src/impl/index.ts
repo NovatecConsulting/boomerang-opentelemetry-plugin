@@ -28,7 +28,7 @@ import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
 import { DocumentLoadInstrumentation } from '@opentelemetry/instrumentation-document-load';
 import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-user-interaction';
 import { PluginProperties, ContextFunction } from '../types';
-import { toCollectorExportTraceServiceRequest } from './patchCollectorPrototype';
+import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
 
 /**
  * TODOs:
@@ -114,9 +114,9 @@ export default class OpenTelemetryTracingImpl {
 
       // patches the collector-export in order to be compatible with Prototype
       if (this.props.prototypeExporterPatch) {
-        exporter.convert = (spans) => {
-          return toCollectorExportTraceServiceRequest(spans, exporter, true);
-        };
+        patchExporter(exporter);
+        patchExporterClass();
+
       }
 
       providerWithZone.addSpanProcessor(
