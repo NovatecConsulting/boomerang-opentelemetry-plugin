@@ -95,7 +95,7 @@ Available options are:
 | `exporter.exportTimeoutMillis` | How long the export can run before it is cancelled. | `30000` |
 | `commonAttributes` | An Object defining common span attributes which will be added to each recorded span. | `{}` |
 | `serviceName` | A `string` or function which can be used to set the spans' service name. A function can be defined for dynamically providing the service name, e.g. based on Boomerang values. | `undefined` |
-| `prototypeExporterPatch` | Patches the OpenTelemetry collector-span-exporter, so it is compatible with the Prototype framework. This is only necessary and should only be activated, when the Prototype framework is used. | `false` |
+| `prototypeExporterPatch` | Patches the OpenTelemetry collector-span-exporter, so it is compatible with the Prototype framework. This is only necessary and should only be activated, when the Prototype framework is used. [For more information see the linked file](https://github.com/NovatecConsulting/boomerang-opentelemetry-plugin/blob/master/src/impl/patchCollectorPrototype.ts). | `false` |
 
 ## Manual Instrumentation
 
