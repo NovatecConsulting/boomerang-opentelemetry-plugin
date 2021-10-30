@@ -1,3 +1,6 @@
+import "core-js/stable/symbol";
+import "regenerator-runtime/runtime";
+
 import OpenTelemetryTracingImpl from './impl';
 
 // Global Boomerang instance

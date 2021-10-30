@@ -20,7 +20,9 @@
     "@opentelemetry/instrumentation-user-interaction": "^0.25.0",
     "@opentelemetry/instrumentation-xml-http-request": "^0.25.0",
     "@opentelemetry/propagator-b3": "^0.25.0",
-    "@opentelemetry/sdk-trace-web": "^0.25.0"
+    "@opentelemetry/sdk-trace-web": "^0.25.0",
+    "core-js": "3",
+    "regenerator-runtime": "^0.13.9"
   },
   "devDependencies": {
     "@babel/cli": "^7.10.5",

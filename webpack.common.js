@@ -16,9 +16,12 @@ module.exports = {
         use: {
           loader: 'babel-loader',
           options: {
-            sourceType: 'unambiguous',
-            presets: ['@babel/preset-env'],
-            plugins: ['@babel/plugin-transform-runtime'],
+            babelrc: false,
+            configFile: path.resolve(__dirname, 'babel.config.js'),
+            compact: false,
+            cacheDirectory: true,
+            sourceMaps: false,
+            sourceType: 'unambiguous'
           },
         },
       },
