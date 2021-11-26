@@ -869,14 +869,6 @@
   resolved "https://registry.yarnpkg.com/@opentelemetry/context-zone-peer-dep/-/context-zone-peer-dep-0.25.0.tgz#81c8953c7fa257b1ffed1033e6bae5c4df5e67cc"
   integrity sha512-Jl7J4mgkDdQsLyXvmNVz71kFoQlIDqu0spVvwmNgTDbQLhH0f0LR7nxegd+fALaA0WenHJtc7TAHjBV0zuu3GQ==
 
-"@opentelemetry/context-zone@^0.25.0":
-  version "0.25.0"
-  resolved "https://registry.yarnpkg.com/@opentelemetry/context-zone/-/context-zone-0.25.0.tgz#fff943765732494040a2c02f52b518a3cde2d028"
-  integrity sha512-1KqRNI5eB09sYXMaVfJu1SQG7VDpBgx9DZKGrEbo4Ehh+S114xRwcP4YcCPZmKkxxvgXTCfV2DeoSz6fccdaxw==
-  dependencies:
-    "@opentelemetry/context-zone-peer-dep" "0.25.0"
-    zone.js "^0.11.0"
-
 "@opentelemetry/core@0.25.0", "@opentelemetry/core@^0.25.0":
   version "0.25.0"
   resolved "https://registry.yarnpkg.com/@opentelemetry/core/-/core-0.25.0.tgz#44fae79865483be5dacdf72f99db9f1a603c4bae"
@@ -1690,9 +1682,9 @@ core-js-compat@^3.6.2:
     semver "7.0.0"
 
 core-js@3:
-  version "3.19.0"
-  resolved "https://registry.yarnpkg.com/core-js/-/core-js-3.19.0.tgz#9e40098a9bc326c7e81b486abbd5e12b9d275176"
-  integrity sha512-L1TpFRWXZ76vH1yLM+z6KssLZrP8Z6GxxW4auoCj+XiViOzNPJCAuTIkn03BGdFe6Z5clX5t64wRIRypsZQrUg==
+  version "3.19.1"
+  resolved "https://registry.yarnpkg.com/core-js/-/core-js-3.19.1.tgz#f6f173cae23e73a7d88fa23b6e9da329276c6641"
+  integrity sha512-Tnc7E9iKd/b/ff7GFbhwPVzJzPztGrChB8X8GLqoYGdEOG8IpLnK1xPyo3ZoO3HsK6TodJS58VGPOxA+hLHQMg==
 
 core-util-is@~1.0.0:
   version "1.0.2"
@@ -4146,7 +4138,7 @@ yargs@13.2.4:
     y18n "^4.0.0"
     yargs-parser "^13.1.0"
 
-zone.js@^0.11.0:
+zone.js@^0.11.4:
   version "0.11.4"
   resolved "https://registry.yarnpkg.com/zone.js/-/zone.js-0.11.4.tgz#0f70dcf6aba80f698af5735cbb257969396e8025"
   integrity sha512-DDh2Ab+A/B+9mJyajPjHFPWfYU1H+pdun4wnnk0OcQTNjem1XQSZ2CDW+rfZEUDjv5M19SBqAkjZi0x5wuB5Qw==

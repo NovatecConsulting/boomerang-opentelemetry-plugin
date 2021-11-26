@@ -1,5 +1,6 @@
-import "core-js/stable/symbol";
-import "regenerator-runtime/runtime";
+// Required for loading Zone.js
+// We ship our own Zone.js due to a bug with IE in 0.11.0 - https://github.com/angular/angular/issues/38669
+import 'zone.js/dist/zone';
 
 import OpenTelemetryTracingImpl from './impl';
 

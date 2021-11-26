@@ -9,6 +9,10 @@ The plugin version always corresponds to the opentelemetry-js version that's bei
 ![alt text](images/example_jaeger_ocelot_eum.png "Example Screenshot of recorded Spans using Jaeger and the Ocelot EUM Server")
 *Example Screenshot of recorded spans using Jaeger and the Ocelot EUM Server*
 
+## Using with Angular
+
+This module provides Zone Context Manager with a dependency for zone-js for Web applications. If you use Angular you already have the zone-js. In this case, this might casue some problems and you should use a custom build of this library where zone-js has been removed.
+
 ## Features
 
 Currently implemented features:
