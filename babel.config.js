@@ -6,17 +6,12 @@ module.exports = function (api) {
       {
         corejs: {
           version: '3',
-          proposals: true,
+          proposals: false,
         },
         useBuiltIns: 'usage',
         targets: {
           browsers: [
-            'edge >= 16',
-            'safari >= 9',
-            'firefox >= 57',
             'ie >= 11',
-            'ios >= 9',
-            'chrome >= 49',
           ],
         },
       },

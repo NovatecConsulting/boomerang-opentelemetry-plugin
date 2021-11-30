@@ -6,6 +6,7 @@
   "license": "Apache-2.0",
   "scripts": {
     "build": "webpack --config webpack.prod.js",
+    "build-dev": "webpack --config webpack.dev.js",
     "watch": "webpack --watch --config webpack.dev.js"
   },
   "scripts-info": {
@@ -13,7 +14,7 @@
   },
   "dependencies": {
     "@opentelemetry/api": "^1.0.3",
-    "@opentelemetry/context-zone": "^0.25.0",
+    "@opentelemetry/context-zone-peer-dep": "0.25.0",
     "@opentelemetry/exporter-collector": "^0.25.0",
     "@opentelemetry/instrumentation-document-load": "^0.25.0",
     "@opentelemetry/instrumentation-fetch": "^0.25.0",
@@ -21,8 +22,8 @@
     "@opentelemetry/instrumentation-xml-http-request": "^0.25.0",
     "@opentelemetry/propagator-b3": "^0.25.0",
     "@opentelemetry/sdk-trace-web": "^0.25.0",
-    "core-js": "3",
-    "regenerator-runtime": "^0.13.9"
+    "regenerator-runtime": "^0.13.9",
+    "zone.js": "^0.11.4"
   },
   "devDependencies": {
     "@babel/cli": "^7.10.5",
@@ -32,6 +33,7 @@
     "@babel/runtime": "^7.11.2",
     "@types/node": "^16.0.0",
     "babel-loader": "^8.1.0",
+    "core-js": "3",
     "prettier": "^2.0.5",
     "ts-loader": "^7.0.1",
     "typescript": "^3.8.3",

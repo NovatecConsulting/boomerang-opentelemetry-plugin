@@ -9,7 +9,7 @@ import {
   WebTracerProvider,
 } from '@opentelemetry/sdk-trace-web';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
-import { ZoneContextManager } from '@opentelemetry/context-zone';
+import { ZoneContextManager } from '@opentelemetry/context-zone-peer-dep';
 import {
   CollectorTraceExporter,
   CollectorExporterNodeConfigBase,
