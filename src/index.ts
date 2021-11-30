@@ -2,11 +2,36 @@
 // We ship our own Zone.js due to a bug with IE in 0.11.0 - https://github.com/angular/angular/issues/38669
 import 'zone.js/dist/zone';
 
-import OpenTelemetryTracingImpl from './impl';
-
 // Global Boomerang instance
 declare global {
-  interface Window { BOOMR: any; }
+  interface Window {
+    BOOMR: any;
+    Prototype: any;
+    usePrototypeCompatibilityFix: boolean;
+  }
+}
+
+// When using the IE11 browser and Prototypejs, OpenTelemetry cannot be loaded.
+// This is caused by the OpenTelemetry framework due to a polyfill of core-js which is used in OpenTelemetry
+// and the fact, that Prototypejs adds a `entries` attribute to the array class.
+//
+// As a workaround, we remove the entries attribute of the Array object, load OpenTelemetry and add the entries
+// attribute in order to not break the target application.
+//
+// See https://github.com/NovatecConsulting/boomerang-opentelemetry-plugin/issues/27#issue-1067341825
+const isIE = !!(<any>window.document).documentMode;
+const usesPrototype = !!window.Prototype;
+
+let currentEntriesFn;
+if (isIE && usesPrototype) {
+  currentEntriesFn = Array.prototype.entries;
+  delete Array.prototype.entries;
+}
+
+import OpenTelemetryTracingImpl from './impl';
+
+if (currentEntriesFn) {
+  Array.prototype.entries = currentEntriesFn;
 }
 
 /**
@@ -33,7 +58,12 @@ declare global {
       const properties = Object.keys(impl.getProps());
 
       // This block is only needed if you actually have user configurable properties
-      window.BOOMR.utils.pluginConfig(impl.getProps(), config, 'OpenTelemetry', properties);
+      window.BOOMR.utils.pluginConfig(
+        impl.getProps(),
+        config,
+        'OpenTelemetry',
+        properties
+      );
 
       // resolve beacon url
       const beaconUrl = config['beacon_url'];
