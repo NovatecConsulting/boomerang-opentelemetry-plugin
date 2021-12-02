@@ -7,7 +7,6 @@ declare global {
   interface Window {
     BOOMR: any;
     Prototype: any;
-    usePrototypeCompatibilityFix: boolean;
   }
 }
 
@@ -72,7 +71,11 @@ if (currentEntriesFn) {
       }
 
       // Other initialization code here
-      impl.register();
+      try {
+        impl.register();
+      } catch (error) {
+        console.error('Error while registering OpenTelemetry plugin.', error);
+      }
 
       // Subscribe to any BOOMR events here.
       // Unless your code will explicitly be called by the developer

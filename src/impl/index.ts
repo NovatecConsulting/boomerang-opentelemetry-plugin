@@ -116,7 +116,6 @@ export default class OpenTelemetryTracingImpl {
       if (this.props.prototypeExporterPatch) {
         patchExporter(exporter);
         patchExporterClass();
-
       }
 
       providerWithZone.addSpanProcessor(
@@ -216,8 +215,9 @@ export default class OpenTelemetryTracingImpl {
       );
     }
 
-    // Instrumentation for the fetch API
-    if (plugins.instrument_fetch !== false) {
+    // Instrumentation for the fetch API if available
+    const isFetchAPISupported = 'fetch' in window;
+    if (isFetchAPISupported && plugins.instrument_fetch !== false) {
       insrumentations.push(new FetchInstrumentation());
     }
 

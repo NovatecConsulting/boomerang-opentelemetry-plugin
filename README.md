@@ -88,7 +88,7 @@ Available options are:
 | `collectorConfiguration` | Object that defines the OpenTelemetry collector configuration, like the URL to send spans to. See [CollectorExporterNodeConfigBase](https://www.npmjs.com/package/@opentelemetry/exporter-collector) interface for all options. | `undefined` |
 | `consoleOnly` | If `true` spans will be logged on the console and not sent to the collector endpoint. | `false` |
 | `plugins` | Object for enabling and disabling OpenTelemetry plugins. |  |
-| `plugins.instrument_fetch` | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-instrumentation-fetch) for insturmentation of the fetch API. | `true` |
+| `plugins.instrument_fetch` | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-instrumentation-fetch) for insturmentation of the fetch API. This will only be used in case the `fetch` API exists. | `true` |
 | `plugins.instrument_xhr` | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-instrumentation-xml-http-request) for insturmentation of the XMLHttpRequest API. | `true` |
 | `plugins.instrument_document_load` | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-document-load) for insturmentation of the document load (initial request). | `true` |
 | `plugins.instrument_user_interaction` | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-user-interaction) for insturmentation of user interactions. | `true` |
