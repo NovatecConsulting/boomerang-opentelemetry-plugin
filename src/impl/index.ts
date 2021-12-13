@@ -3,6 +3,7 @@ import {
   AlwaysOnSampler,
   AlwaysOffSampler,
   TraceIdRatioBasedSampler,
+  HttpTraceContextPropagator,
 } from '@opentelemetry/core';
 import {
   WebTracerConfig,
@@ -22,12 +23,12 @@ import {
 } from '@opentelemetry/sdk-trace-base';
 import { Resource } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
-import { B3Propagator } from '@opentelemetry/propagator-b3';
+import { B3InjectEncoding, B3Propagator } from '@opentelemetry/propagator-b3';
 import { XMLHttpRequestInstrumentation } from '@opentelemetry/instrumentation-xml-http-request';
 import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
 import { DocumentLoadInstrumentation } from '@opentelemetry/instrumentation-document-load';
 import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-user-interaction';
-import { PluginProperties, ContextFunction } from '../types';
+import { PluginProperties, ContextFunction, PropagationHeader } from '../types';
 import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
 
 /**
@@ -56,6 +57,7 @@ export default class OpenTelemetryTracingImpl {
     commonAttributes: {},
     prototypeExporterPatch: false,
     serviceName: undefined,
+    propagationHeader: PropagationHeader.TRACE_CONTEXT,
   };
 
   private props: PluginProperties = {
@@ -90,7 +92,7 @@ export default class OpenTelemetryTracingImpl {
       // changing default contextManager to use ZoneContextManager - supports asynchronous operations
       contextManager: new ZoneContextManager(),
       // using B3 context propagation format
-      propagator: new B3Propagator(),
+      propagator: this.getContextPropagator(),
     });
 
     // registering instrumentations / plugins
@@ -148,6 +150,25 @@ export default class OpenTelemetryTracingImpl {
 
   public setBeaconUrl = (url: string) => {
     this.beaconUrl = url;
+  };
+
+  /**
+   * @returns Returns the configured context propagator for injecting the trace context into HTTP request headers.
+   */
+  private getContextPropagator = () => {
+    switch (this.props.propagationHeader) {
+      case PropagationHeader.B3_SINGLE:
+        return new B3Propagator({
+          injectEncoding: B3InjectEncoding.SINGLE_HEADER,
+        });
+      case PropagationHeader.B3_MULTI:
+        return new B3Propagator({
+          injectEncoding: B3InjectEncoding.MULTI_HEADER,
+        });
+      case PropagationHeader.TRACE_CONTEXT:
+      default:
+        return new HttpTraceContextPropagator();
+    }
   };
 
   /**

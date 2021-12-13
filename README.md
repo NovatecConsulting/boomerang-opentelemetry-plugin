@@ -76,6 +76,7 @@ BOOMR.init({
     },
     serviceName: () => BOOMR.getVar("page_name") || "unknown_service", // an optional service name for the spans
     prototypeExporterPatch: false // patches the OpenTelemetry collector-span-exporter in case the Prototype framework is used
+    propagationHeader: "TRACE_CONTEXT",
   }
 });
 ```
@@ -100,6 +101,7 @@ Available options are:
 | `commonAttributes` | An Object defining common span attributes which will be added to each recorded span. | `{}` |
 | `serviceName` | A `string` or function which can be used to set the spans' service name. A function can be defined for dynamically providing the service name, e.g. based on Boomerang values. | `undefined` |
 | `prototypeExporterPatch` | Patches the OpenTelemetry collector-span-exporter, so it is compatible with the Prototype framework. This is only necessary and should only be activated, when the Prototype framework is used. [For more information see the linked file](https://github.com/NovatecConsulting/boomerang-opentelemetry-plugin/blob/master/src/impl/patchCollectorPrototype.ts). | `false` |
+| `propagationHeader` | Defines the format of the context propagation header. Available formats: `TRACE_CONTEXT`, `B3_SINGLE`, `B3_MULTI` | `TRACE_CONTEXT` |
 
 ## Manual Instrumentation
 
