@@ -1,0 +1,38 @@
+name: Create new Release
+
+on:
+  push:
+    tags:
+      - "*.*.*"
+  workflow_dispatch:
+
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Build plugin
+        run: |
+          npm install --global yarn
+          yarn install
+          yarn build && yarn build-dev
+      - name: Prepare BOM generation
+        run: mkdir boomerang-opentelemetry-boms
+      - name: Generate XML BOM
+        uses: CycloneDX/gh-node-module-generatebom@master
+        with:
+          output: ./boomerang-opentelemetry-boms/boomerang-opentelemetry-bom.xml
+      - name: Generate JSON BOM
+        uses: CycloneDX/gh-node-module-generatebom@master
+        with:
+          output: ./boomerang-opentelemetry-boms/boomerang-opentelemetry-bom.json
+          json: true
+      - name: Package BOMs
+        run: |
+          zip -r dist/boomerang-opentelemetry-boms.zip boomerang-opentelemetry-boms
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*
