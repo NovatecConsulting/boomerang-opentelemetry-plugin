@@ -139,3 +139,10 @@ Make sure to check that `window.BOOMR.plugins.OpenTelemetry` actually exists pri
 During development, the plugin can be compiled and automatically recompiled whenever a file is changed using: `yarn watch`
 
 The plugin can be built using the command: `yarn build`
+
+### Release
+
+To create a release, create a new Tag following the structure `*.*.*`. 
+Write a meaningful message for the tag, since that will be the release's text as well.
+Then push the tag. 
+The GitHub Action "Create new Release" will build the plugin and its Software Bill of Materials, and then create a new release automatically.
