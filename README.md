@@ -145,4 +145,4 @@ The plugin can be built using the command: `yarn build`
 To create a release, create a new Tag following the structure `*.*.*`. 
 Write a meaningful message for the tag, since that will be the release's text as well.
 Then push the tag. 
-The GitHub Action "Create new Release" will build the plugin and its Software Bill of Materials, and then create a new release automatically.
+The GitHub Action "Create new Release" will build the plugin and its software bill of materials, and then create a new release automatically.
