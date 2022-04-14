@@ -16,20 +16,20 @@ jobs:
           npm install --global yarn
           yarn install
           yarn build && yarn build-dev
-      - name: Prepare BOM generation
-        run: mkdir boomerang-opentelemetry-boms
-      - name: Generate XML BOM
+      - name: Prepare SBOM generation
+        run: mkdir boomerang-opentelemetry-sboms
+      - name: Generate XML SBOM
         uses: CycloneDX/gh-node-module-generatebom@master
         with:
-          output: ./boomerang-opentelemetry-boms/boomerang-opentelemetry-bom.xml
-      - name: Generate JSON BOM
+          output: ./boomerang-opentelemetry-sboms/boomerang-opentelemetry-sbom.xml
+      - name: Generate JSON SBOM
         uses: CycloneDX/gh-node-module-generatebom@master
         with:
-          output: ./boomerang-opentelemetry-boms/boomerang-opentelemetry-bom.json
+          output: ./boomerang-opentelemetry-sboms/boomerang-opentelemetry-sbom.json
           json: true
-      - name: Package BOMs
+      - name: Package SBOMs
         run: |
-          zip -r dist/boomerang-opentelemetry-boms.zip boomerang-opentelemetry-boms
+          zip -r dist/boomerang-opentelemetry-sboms.zip boomerang-opentelemetry-sboms
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
