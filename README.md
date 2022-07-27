@@ -11,7 +11,7 @@ The plugin version always corresponds to the opentelemetry-js version that's bei
 
 ## Using with Angular
 
-This module provides Zone Context Manager with a dependency for zone-js for Web applications. If you use Angular you already have the zone-js. In this case, this might casue some problems and you should use a custom build of this library where zone-js has been removed.
+This module provides Zone Context Manager with a dependency for zone-js for Web applications. If you use Angular you already have the zone-js. In this case, this might case some problems and you should use a custom build of this library where zone-js has been removed.
 
 ## Features
 
@@ -36,7 +36,7 @@ A list of OpenTelemetry instrumentation and non-instrumentation plugins that are
 
 ## Setup
 
-The basic setup requires only to include the `boomerang-opentelemetry.js` file to the list of the boomerang plugins to run. This setup works out-of-the-box with the  [inspectit-ocelot EUM server](https://github.com/inspectIT/inspectit-ocelot/tree/master/components/inspectit-ocelot-eum-server).
+The basic setup requires only to include the `boomerang-opentelemetry.js` file to the list of the boomerang plugins to run. This setup works out-of-the-box with the  [inspectit-ocelot EUM server](https://github.com/inspectIT/inspectit-ocelot-eum-server).
 
 By default, collected spans will be sent to an URL relative to the defined `beacon_url` Boomerang property in case your `beacon_url` ends with `/beacon`. In this case, an endpoint for spans is used, where `/beacon` is replaced by `/spans`. However, if you use different URLs, the collector URL must be configured accordingly.
 
