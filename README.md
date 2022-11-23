@@ -54,10 +54,37 @@ BOOMR.init({
     corsUrls: ['https://my.backend.com'],
     consoleOnly: false, // an optional flag whether spans should only be printed to the console
     collectorConfiguration: {
-      url: 'http://localhost:55681/v1/trace' // an optional url for an OpenTelemetry collector
+      url: 'http://localhost:55681/v1/trace', // an optional url for an OpenTelemetry collector
       headers: {}, // an optional object containing custom headers to be sent with each request
       concurrencyLimit: 10, // an optional limit on pending requests
     },
+    plugin_config: {
+      instrument_fetch: {
+        enabled: false,
+        clearTimingResources: false,
+        path: "",
+        applyCustomAttributesOnSpan: null, //A method with the following structure: (span: Span, request: Request) => { },
+        ignoreUrls: [],
+        propagateTraceHeaderCorsUrls: []
+      },
+      instrument_xhr: {
+        enabled: false,
+        path: "",
+        applyCustomAttributesOnSpan: null, //A method with the following structure: (span: Span, xhr: XMLHttpRequest) => { },
+        propagateTraceHeaderCorsUrls: [],
+        ignoreUrls: [],
+        clearTimingResources: false,
+      },
+      instrument_document_load: {
+        enabled: false,
+        path: "",
+      },
+      instrument_user_interaction: {
+        enabled: false,
+        path: "",
+      },
+    },
+    // Use these options only for legacy configuration
     plugins: {
       instrument_fetch: true,
       instrument_xhr: true,
