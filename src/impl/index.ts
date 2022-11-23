@@ -30,9 +30,6 @@ import { DocumentLoadInstrumentation } from '@opentelemetry/instrumentation-docu
 import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-user-interaction';
 import { PluginProperties, ContextFunction, PropagationHeader } from '../types';
 import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
-import * as Path from "path";
-import * as web from "@opentelemetry/sdk-trace-web";
-import {PropagateTraceHeaderCorsUrls} from "@opentelemetry/sdk-trace-web/build/src/types";
 
 /**
  * TODOs:
@@ -56,14 +53,14 @@ export default class OpenTelemetryTracingImpl {
         enabled: false,
         clearTimingResources: false,
         path: "",
-        applyCustomAttributesOnSpan: null, // Der aufbau der function die rein genommen wird: (span: Span, request: Request) => { },
+        applyCustomAttributesOnSpan: null, //(span: Span, request: Request) => { },
         ignoreUrls: [],
         propagateTraceHeaderCorsUrls: []
       },
       instrument_xhr: {
         enabled: false,
         path: "",
-        applyCustomAttributesOnSpan: null, // Der aufbau der function die rein genommen wird:  (span: Span, xhr: XMLHttpRequest) => { },
+        applyCustomAttributesOnSpan: null, // (span: Span, xhr: XMLHttpRequest) => { },
         propagateTraceHeaderCorsUrls: [],
         ignoreUrls: [],
         clearTimingResources: false,
@@ -256,7 +253,7 @@ export default class OpenTelemetryTracingImpl {
     const insrumentations: any = [];
 
     // XMLHttpRequest Instrumentation for web plugin
-    if (plugin_config.instrument_xhr.enabled !== false) {
+    if (plugin_config.instrument_xhr && plugin_config.instrument_xhr.enabled !== false) {
       insrumentations.push(new XMLHttpRequestInstrumentation(plugin_config.instrument_xhr));
     }
     else if (plugins.instrument_xhr !== false) {
@@ -269,7 +266,7 @@ export default class OpenTelemetryTracingImpl {
 
     // Instrumentation for the fetch API if available
     const isFetchAPISupported = 'fetch' in window;
-    if (isFetchAPISupported && plugin_config.instrument_fetch.enabled !== false) {
+    if (plugin_config.instrument_fetch && isFetchAPISupported && plugin_config.instrument_fetch.enabled !== false) {
       insrumentations.push(new FetchInstrumentation(plugin_config.instrument_fetch));
     }
     else if (isFetchAPISupported && plugins.instrument_fetch !== false) {
@@ -277,7 +274,7 @@ export default class OpenTelemetryTracingImpl {
     }
 
     // Instrumentation for the document on load (initial request)
-    if (plugin_config.instrument_document_load.enabled !== false) {
+    if (plugin_config.instrument_document_load && plugin_config.instrument_document_load.enabled !== false) {
       insrumentations.push(new DocumentLoadInstrumentation(plugin_config.instrument_document_load));
     }
     else if (plugins.instrument_document_load !== false) {
@@ -285,7 +282,7 @@ export default class OpenTelemetryTracingImpl {
     }
 
     // Instrumentation for user interactions
-    if (plugin_config.instrument_user_interaction.enabled !== false) {
+    if (plugin_config.instrument_user_interaction && plugin_config.instrument_user_interaction.enabled !== false) {
       insrumentations.push(new UserInteractionInstrumentation(plugin_config.instrument_user_interaction));
     }
     else if (plugins.instrument_user_interaction !== false) {
