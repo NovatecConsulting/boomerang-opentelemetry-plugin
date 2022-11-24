@@ -13,7 +13,7 @@ export interface PluginProperties {
   collectorConfiguration: CollectorExporterNodeConfigBase | undefined;
   consoleOnly: boolean;
   plugins: OTPluginProperties;
-  plugin_config: OTPluginConfig;
+  plugins_config: OTPluginConfig;
   exporter: OTExportProperties;
   commonAttributes: StringMap;
   prototypeExporterPatch: boolean;

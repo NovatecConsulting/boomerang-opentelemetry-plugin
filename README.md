@@ -58,7 +58,7 @@ BOOMR.init({
       headers: {}, // an optional object containing custom headers to be sent with each request
       concurrencyLimit: 10, // an optional limit on pending requests
     },
-    plugin_config: {
+    plugins_config: {
       instrument_fetch: {
         enabled: false,
         clearTimingResources: false,
@@ -84,7 +84,7 @@ BOOMR.init({
         path: "",
       },
     },
-    // Use these options only for legacy configuration
+    // Use these options only for legacy configuration. Instead using plugins_config is recommended.
     plugins: {
       instrument_fetch: true,
       instrument_xhr: true,
