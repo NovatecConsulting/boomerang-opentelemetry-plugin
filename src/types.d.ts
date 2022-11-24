@@ -1,5 +1,11 @@
 import { PropagateTraceHeaderCorsUrls } from '@opentelemetry/sdk-trace-web';
 import { CollectorExporterNodeConfigBase } from '@opentelemetry/exporter-collector';
+import {FetchInstrumentation, FetchInstrumentationConfig} from "@opentelemetry/instrumentation-fetch";
+import {
+  XMLHttpRequestInstrumentation,
+  XMLHttpRequestInstrumentationConfig
+} from "@opentelemetry/instrumentation-xml-http-request";
+import {InstrumentationConfig} from "@opentelemetry/instrumentation";
 
 export interface PluginProperties {
   samplingRate: number;
@@ -7,6 +13,7 @@ export interface PluginProperties {
   collectorConfiguration: CollectorExporterNodeConfigBase | undefined;
   consoleOnly: boolean;
   plugins: OTPluginProperties;
+  plugins_config: OTPluginConfig;
   exporter: OTExportProperties;
   commonAttributes: StringMap;
   prototypeExporterPatch: boolean;
@@ -29,6 +36,13 @@ export interface OTPluginProperties {
   instrument_xhr: boolean;
   instrument_document_load: boolean;
   instrument_user_interaction: boolean;
+}
+
+export interface OTPluginConfig {
+  instrument_fetch: FetchInstrumentationConfig;
+  instrument_xhr: XMLHttpRequestInstrumentationConfig;
+  instrument_document_load: InstrumentationConfig;
+  instrument_user_interaction: InstrumentationConfig;
 }
 
 export interface OTExportProperties {
