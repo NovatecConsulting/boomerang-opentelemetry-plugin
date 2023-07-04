@@ -174,6 +174,16 @@ export default class OpenTelemetryTracingImpl {
     return api;
   };
 
+  public addVarToSpan = (key: string, value: string) => {
+    let activeSpan = api.trace.getSpan(api.context.active());
+    if(activeSpan === undefined) {
+      console.warn('No active span found');
+      return;
+    }
+
+    activeSpan.setAttribute(key, value);
+  }
+
   public setBeaconUrl = (url: string) => {
     this.beaconUrl = url;
   };
