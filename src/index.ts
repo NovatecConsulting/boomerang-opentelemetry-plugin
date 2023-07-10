@@ -96,7 +96,7 @@ if (currentEntriesFn) {
     // Adds a custom variable to the current span
     // and optionally also to the current beacon
     addVarToSpan: (key: string, value: string, addToBeacon: boolean = false): void => {
-      impl.addVarToSpan(key, value);
+      impl.addVarToSpans(key, value);
 
       if(addToBeacon) window.BOOMR.addVar(key, value);
     },
