@@ -8,12 +8,13 @@ on:
 jobs:
   build-and-release:
     runs-on: ubuntu-20.04
+    container:
+      image: node:16.17
     steps:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Build plugin
         run: |
-          npm install --global yarn
           yarn install
           yarn build && yarn build-dev
       - name: Prepare SBOM generation
@@ -29,6 +30,7 @@ jobs:
           json: true
       - name: Package SBOMs
         run: |
+          apt-get update && apt-get install zip
           zip -r dist/boomerang-opentelemetry-sboms.zip boomerang-opentelemetry-sboms
       - name: Create Release
         uses: softprops/action-gh-release@v1

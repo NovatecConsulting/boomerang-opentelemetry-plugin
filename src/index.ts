@@ -93,6 +93,15 @@ if (currentEntriesFn) {
     // Returns the internally used OpenTelemetry API
     getOpenTelemetryApi: impl.getOpenTelemetryApi,
 
+    // Adds a custom variable to the current span as well as all following spans
+    // that are created by opentelemetry.js
+    // Adds optionally a custom variable to the current beacon
+    addVarToSpans: (key: string, value: string, addToBeacon: boolean = false): void => {
+      impl.addVarToSpans(key, value);
+
+      if(addToBeacon) window.BOOMR.addVar(key, value);
+    },
+
     is_complete: () => {
       // This method should determine if the plugin has completed doing what it
       // needs to do and return true if so or false otherwise
