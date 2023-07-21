@@ -1,5 +1,6 @@
 import { Context } from '@opentelemetry/api';
 import { Span, ReadableSpan, SpanProcessor } from '@opentelemetry/sdk-trace-base';
+import { globalErrorHandler } from '@opentelemetry/core'
 
 /**
  * SpanProcessor for special operations
@@ -43,6 +44,7 @@ export class CustomSpanProcessor implements SpanProcessor {
 
 /**
  * Storage to allow the use of multiple SpanProcessors
+ * Basically, exports the MultiSpanProcessor from @opentelemetry/sdk-trace-base
  */
 export class MultiSpanProcessor implements SpanProcessor {
 
@@ -52,14 +54,22 @@ export class MultiSpanProcessor implements SpanProcessor {
   }
 
   forceFlush(): Promise<void> {
-    return Promise.all(
-      this.spanProcessors.map((processor) => {
-        if (processor.forceFlush) {
-          return processor.forceFlush();
-        }
-        return Promise.resolve();
-      })
-    ).then(() => {});
+    const promises: Promise<void>[] = [];
+    for (const spanProcessor of this.spanProcessors) {
+      promises.push(spanProcessor.forceFlush());
+    }
+    return new Promise<void>((resolve) => {
+      Promise.all(promises)
+        .then(() => {
+          resolve();
+        })
+        .catch((error) => {
+          globalErrorHandler(
+            error || new Error('MultiSpanProcessor: forceFlush failed')
+          );
+          resolve();
+        });
+    });
   }
 
   onEnd(span: ReadableSpan): void {
@@ -75,9 +85,19 @@ export class MultiSpanProcessor implements SpanProcessor {
   }
 
   shutdown(): Promise<void> {
-    return Promise.all(
-      this.spanProcessors.map((processor) => processor.shutdown())
-    ).then(() => {});
+    const promises: Promise<void>[] = [];
+    for (const spanProcessor of this.spanProcessors) {
+      promises.push(spanProcessor.shutdown());
+    }
+    return new Promise<void>((resolve, reject) => {
+      Promise.all(promises)
+        .then(() => {
+          resolve();
+        })
+        .catch((error) => {
+          reject(error);
+        });
+    });
   }
 }
 
