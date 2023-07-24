@@ -1,6 +1,6 @@
 import { Context } from '@opentelemetry/api';
 import { Span, ReadableSpan, SpanProcessor } from '@opentelemetry/sdk-trace-base';
-import { globalErrorHandler } from '@opentelemetry/core'
+import { globalErrorHandler } from '@opentelemetry/core';
 
 /**
  * SpanProcessor for special operations
