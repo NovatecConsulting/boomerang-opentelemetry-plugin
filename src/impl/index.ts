@@ -31,6 +31,7 @@ import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-u
 import { PluginProperties, ContextFunction, PropagationHeader } from '../types';
 import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
 import { MultiSpanProcessor, CustomSpanProcessor } from './spanProcessing';
+import { DocumentLoadServerTimingInstrumentation } from './documentLoadInstrumentation';
 
 /**
  * TODOs:
@@ -47,6 +48,7 @@ export default class OpenTelemetryTracingImpl {
       instrument_fetch: true,
       instrument_xhr: true,
       instrument_document_load: true,
+      instrument_document_load_server_timing: true,
       instrument_user_interaction: true,
     },
     plugins_config: {
@@ -69,6 +71,11 @@ export default class OpenTelemetryTracingImpl {
       instrument_document_load: {
         enabled: false,
         path: "",
+      },
+      instrument_document_load_server_timing: {
+        enabled: false,
+        path: "",
+        ignoreUrls: []
       },
       instrument_user_interaction: {
         enabled: false,
@@ -293,6 +300,14 @@ export default class OpenTelemetryTracingImpl {
     }
     else if (plugins?.instrument_document_load !== false) {
       instrumentations.push(new DocumentLoadInstrumentation());
+    }
+
+    // Instrumentation for document on load (initial request) with server timings
+    if (plugins_config?.instrument_document_load_server_timing?.enabled !== false) {
+      instrumentations.push(new DocumentLoadServerTimingInstrumentation(plugins_config.instrument_document_load_server_timing));
+    }
+    else if (plugins?.instrument_document_load_server_timing !== false) {
+      instrumentations.push(new DocumentLoadServerTimingInstrumentation());
     }
 
     // Instrumentation for user interactions
