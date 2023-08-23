@@ -3,10 +3,12 @@ import { InstrumentationConfig } from '@opentelemetry/instrumentation';
 import { DocumentLoadInstrumentation } from '@opentelemetry/instrumentation-document-load';
 import * as api from '@opentelemetry/api';
 import { captureTraceParentFromPerformanceEntries } from './servertiming';
-import { PerformanceEntries } from '@opentelemetry/sdk-trace-web';
+import { hasKey, PerformanceEntries } from '@opentelemetry/sdk-trace-web';
 import { Span } from '@opentelemetry/sdk-trace-base';
 import { isUrlIgnored } from '@opentelemetry/core';
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions';
+import { context, trace } from '@opentelemetry/api';
+import { AttributeNames } from '@opentelemetry/instrumentation-document-load/build/esm/enums/AttributeNames';
 import OpenTelemetryTracingImpl from './index'
 
 export interface DocumentLoadServerTimingInstrumentationConfig extends InstrumentationConfig {
@@ -27,6 +29,7 @@ function addExtraDocLoadTags(span: api.Span) {
 type PerformanceEntriesWithServerTiming = PerformanceEntries & {serverTiming?: ReadonlyArray<({name: string, duration: number, description: string})>}
 
 type ExposedSuper = {
+  _startSpan(spanName: string, performanceName: string, entries: PerformanceEntries, parentSpan?: Span): void;
   _endSpan(span: api.Span | undefined, performanceName: string, entries: PerformanceEntries): void;
   _initResourceSpan(resource: PerformanceResourceTiming, parentSpan: api.Span): void;
 }
@@ -40,6 +43,29 @@ export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrum
     super(config);
 
     const exposedSuper = this as any as ExposedSuper;
+
+
+    const _superStartSpan: ExposedSuper['_startSpan'] = exposedSuper._startSpan.bind(this);
+    exposedSuper._startSpan = (spanName, performanceName, entries, parentSpan) => {
+
+      if (
+        !(entries as PerformanceEntriesWithServerTiming).serverTiming &&
+        performance.getEntriesByType
+      ) {
+        const navEntries = performance.getEntriesByType('navigation');
+        // @ts-ignore
+        if (navEntries[0]?.serverTiming) {
+          // @ts-ignore
+          (entries as PerformanceEntriesWithServerTiming).serverTiming = navEntries[0].serverTiming;
+        }
+      }
+
+      // TODO neue Funktion schreiben ohne Span
+      captureTraceParentFromPerformanceEntries(entries, null, impl);
+
+      return _superStartSpan(spanName, performanceName, entries, parentSpan);
+    }
+
 
     const _superEndSpan: ExposedSuper['_endSpan'] = exposedSuper._endSpan.bind(this);
     exposedSuper._endSpan = (span, performanceName, entries) => {

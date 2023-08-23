@@ -7,8 +7,8 @@ function addMatchToSpan(match: RegExpMatchArray, span: Span, impl: OpenTelemetry
   if (match && match[1] && match[2]) {
     const traceId = match[1];
     const spanId = match[2];
-    span.setAttribute('link.traceId', traceId);
-    span.setAttribute('link.spanId', spanId);
+    //span.setAttribute('link.traceId', traceId);
+    //span.setAttribute('link.spanId', spanId);
     impl.setTraceID(traceId);
   }
 }

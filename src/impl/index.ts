@@ -122,7 +122,7 @@ export default class OpenTelemetryTracingImpl {
     // the configuration used by the tracer
     const tracerConfiguration: WebTracerConfig = {
       sampler: this.resolveSampler(),
-      idGenerator: new CustomIdGenerator(),
+      idGenerator: new CustomIdGenerator(this),
     };
 
     // create provider
