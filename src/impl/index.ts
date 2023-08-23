@@ -32,6 +32,7 @@ import { PluginProperties, ContextFunction, PropagationHeader } from '../types';
 import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
 import { MultiSpanProcessor, CustomSpanProcessor } from './spanProcessing';
 import { DocumentLoadServerTimingInstrumentation } from './documentLoadInstrumentation';
+import { CustomIdGenerator } from './traceIdGeneration';
 
 /**
  * TODOs:
@@ -107,6 +108,8 @@ export default class OpenTelemetryTracingImpl {
 
   private customSpanProcessor = new CustomSpanProcessor();
 
+  private traceID: string;
+
   public register = () => {
     // return if already initialized
     if (this.initialized) {
@@ -119,6 +122,7 @@ export default class OpenTelemetryTracingImpl {
     // the configuration used by the tracer
     const tracerConfiguration: WebTracerConfig = {
       sampler: this.resolveSampler(),
+      idGenerator: new CustomIdGenerator(),
     };
 
     // create provider
@@ -194,6 +198,15 @@ export default class OpenTelemetryTracingImpl {
     if(activeSpan != undefined) activeSpan.setAttribute(key, value);
     // And to all following spans
     this.customSpanProcessor.addCustomAttribute(key,value);
+  }
+
+  public setTraceID = (traceID: string) => {
+    this.traceID = traceID;
+    console.info("TraceID set " + traceID);
+  }
+
+  public getTraceID = () => {
+    return this.traceID;
   }
 
   public setBeaconUrl = (url: string) => {
@@ -304,10 +317,10 @@ export default class OpenTelemetryTracingImpl {
 
     // Instrumentation for document on load (initial request) with server timings
     if (plugins_config?.instrument_document_load_server_timing?.enabled !== false) {
-      instrumentations.push(new DocumentLoadServerTimingInstrumentation(plugins_config.instrument_document_load_server_timing));
+      instrumentations.push(new DocumentLoadServerTimingInstrumentation(plugins_config.instrument_document_load_server_timing, this));
     }
     else if (plugins?.instrument_document_load_server_timing !== false) {
-      instrumentations.push(new DocumentLoadServerTimingInstrumentation());
+      instrumentations.push(new DocumentLoadServerTimingInstrumentation({}, this));
     }
 
     // Instrumentation for user interactions

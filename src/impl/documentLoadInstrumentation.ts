@@ -7,6 +7,7 @@ import { PerformanceEntries } from '@opentelemetry/sdk-trace-web';
 import { Span } from '@opentelemetry/sdk-trace-base';
 import { isUrlIgnored } from '@opentelemetry/core';
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions';
+import OpenTelemetryTracingImpl from './index'
 
 export interface DocumentLoadServerTimingInstrumentationConfig extends InstrumentationConfig {
   ignoreUrls?: (string|RegExp)[];
@@ -31,14 +32,17 @@ type ExposedSuper = {
 }
 
 export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrumentation {
-  constructor(config: DocumentLoadServerTimingInstrumentationConfig = {}) {
+
+  readonly component: string = 'document-load-server-timing';
+  moduleName = this.component;
+
+  constructor(config: DocumentLoadServerTimingInstrumentationConfig = {}, impl: OpenTelemetryTracingImpl) {
     super(config);
 
     const exposedSuper = this as any as ExposedSuper;
 
     const _superEndSpan: ExposedSuper['_endSpan'] = exposedSuper._endSpan.bind(this);
     exposedSuper._endSpan = (span, performanceName, entries) => {
-      // TODO: upstream exposed name on api.Span, then fix
       const exposedSpan = span as any as Span;
 
       if (span) {
@@ -62,7 +66,7 @@ export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrum
           }
         }
 
-        captureTraceParentFromPerformanceEntries(entries, span);
+        captureTraceParentFromPerformanceEntries(entries, span, impl);
         span.setAttribute(SemanticAttributes.HTTP_METHOD, 'GET');
       }
       if (span && exposedSpan.name === 'documentLoad') {
