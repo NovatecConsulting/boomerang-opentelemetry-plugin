@@ -107,7 +107,7 @@ export default class OpenTelemetryTracingImpl {
   private traceProvider: WebTracerProvider;
 
   private customSpanProcessor = new CustomSpanProcessor();
-
+  private customIdGenerator = new CustomIdGenerator(this);
   private traceID: string;
 
   public register = () => {
@@ -122,7 +122,7 @@ export default class OpenTelemetryTracingImpl {
     // the configuration used by the tracer
     const tracerConfiguration: WebTracerConfig = {
       sampler: this.resolveSampler(),
-      idGenerator: new CustomIdGenerator(this),
+      idGenerator: this.customIdGenerator
     };
 
     // create provider
@@ -202,6 +202,7 @@ export default class OpenTelemetryTracingImpl {
 
   public setTraceID = (traceID: string) => {
     this.traceID = traceID;
+    this.customIdGenerator.setTraceID(traceID)
     console.info("TraceID set " + traceID);
   }
 

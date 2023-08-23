@@ -10,26 +10,28 @@ const SHARED_BUFFER = Buffer.allocUnsafe(TRACE_ID_BYTES);
 export class CustomIdGenerator implements IdGenerator {
 
   private impl: OpenTelemetryTracingImpl;
-
-  constructor(impl: OpenTelemetryTracingImpl) {
-    this.impl = impl;
-  }
+  private traceID: string;
 
   /**
    * Returns a random 16-byte trace ID formatted/encoded as a 32 lowercase hex
    * characters corresponding to 128 bits.
    */
-  generateTraceId = this.getServerTimingTraceId();
+  generateTraceId: () => string;
 
   /**
    * Returns a random 8-byte span ID formatted/encoded as a 16 lowercase hex
    * characters corresponding to 64 bits.
    */
-  generateSpanId = this.getIdGenerator(SPAN_ID_BYTES);
+  generateSpanId: () => string;
 
+  constructor(impl: OpenTelemetryTracingImpl) {
+    this.impl = impl;
+    this.generateTraceId = this.getServerTimingTraceId();
+    this.generateSpanId = this.getIdGenerator(SPAN_ID_BYTES);
+  }
 
   getServerTimingTraceId(): () => string {
-    const correlationTraceID = this.impl.getTraceID();
+    const correlationTraceID = this.traceID;
 
     // Use Trace-ID from server-timing-header, if existing
     if(correlationTraceID) {
@@ -58,6 +60,8 @@ export class CustomIdGenerator implements IdGenerator {
       return SHARED_BUFFER.toString('hex', 0, bytes);
     };
   }
+
+  public setTraceID(traceID: string): void {
+    this.traceID = traceID;
+  }
 }
-
-
