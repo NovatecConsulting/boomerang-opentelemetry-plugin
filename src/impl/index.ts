@@ -32,7 +32,7 @@ import { PluginProperties, ContextFunction, PropagationHeader } from '../types';
 import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
 import { MultiSpanProcessor, CustomSpanProcessor } from './spanProcessing';
 import { DocumentLoadServerTimingInstrumentation } from './documentLoadInstrumentation';
-import { CustomIdGenerator } from './traceIdGeneration';
+import { CustomIdGenerator } from './transactionIdGeneration';
 
 /**
  * TODOs:
@@ -108,7 +108,7 @@ export default class OpenTelemetryTracingImpl {
 
   private customSpanProcessor = new CustomSpanProcessor();
   private customIdGenerator = new CustomIdGenerator(this);
-  private traceID: string;
+  private traceId: string;
 
   public register = () => {
     // return if already initialized
@@ -200,14 +200,19 @@ export default class OpenTelemetryTracingImpl {
     this.customSpanProcessor.addCustomAttribute(key,value);
   }
 
-  public setTraceID = (traceID: string) => {
-    this.traceID = traceID;
-    this.customIdGenerator.setTraceID(traceID)
-    console.info("TraceID set " + traceID);
+  public getTransactionTraceId = () => {
+    return this.traceId;
   }
 
-  public getTraceID = () => {
-    return this.traceID;
+  public setTransactionTraceId = (traceId: string) => {
+    this.traceId = traceId;
+    console.info("TraceID set " + traceId);
+  }
+
+  public startNewTransaction = () => {
+    this.traceId = null;
+    const newTraceId = this.customIdGenerator.generateTraceId();
+    this.traceId = newTraceId;
   }
 
   public setBeaconUrl = (url: string) => {

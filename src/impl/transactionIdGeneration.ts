@@ -1,41 +1,45 @@
 import { IdGenerator } from '@opentelemetry/core';
-import { RandomIdGenerator } from '@opentelemetry/core';
 import OpenTelemetryTracingImpl from './index'
 
 const SPAN_ID_BYTES = 8;
 const TRACE_ID_BYTES = 16;
 const SHARED_BUFFER = Buffer.allocUnsafe(TRACE_ID_BYTES);
 
-// Copy of RandomIdGenerator with adjusted functions
+// Copy of RandomIdGenerator (@opentelemetry/core) with additional getTransactionTraceId()-function
 export class CustomIdGenerator implements IdGenerator {
 
   private impl: OpenTelemetryTracingImpl;
-  private traceID: string;
+
+  constructor(impl: OpenTelemetryTracingImpl) {
+    this.impl = impl;
+  }
 
   /**
    * Returns a random 16-byte trace ID formatted/encoded as a 32 lowercase hex
    * characters corresponding to 128 bits.
    */
-  generateTraceId: () => string;
+  get generateTraceId(): () => string {
+    return this.getTransactionTraceId();
+  }
 
   /**
    * Returns a random 8-byte span ID formatted/encoded as a 16 lowercase hex
    * characters corresponding to 64 bits.
    */
-  generateSpanId: () => string;
-
-  constructor(impl: OpenTelemetryTracingImpl) {
-    this.impl = impl;
-    this.generateTraceId = this.getServerTimingTraceId();
-    this.generateSpanId = this.getIdGenerator(SPAN_ID_BYTES);
+  get generateSpanId(): () => string {
+    return this.getIdGenerator(SPAN_ID_BYTES);
   }
 
-  getServerTimingTraceId(): () => string {
-    const correlationTraceID = this.traceID;
-
+  /**
+   * If the OpenTelemetryTracingImpl contains a transaction-trace-id, use it
+   * Otherwise, generate a new trace-id the ordinary way
+   */
+  getTransactionTraceId(): () => string {
+    const transactionTraceId = this.impl.getTransactionTraceId();
+    console.info("TransactionId: " + transactionTraceId)
     // Use Trace-ID from server-timing-header, if existing
-    if(correlationTraceID) {
-      return () => correlationTraceID;
+    if(transactionTraceId) {
+      return () => transactionTraceId;
     }
     else return this.getIdGenerator(TRACE_ID_BYTES);
   }
@@ -59,9 +63,5 @@ export class CustomIdGenerator implements IdGenerator {
 
       return SHARED_BUFFER.toString('hex', 0, bytes);
     };
-  }
-
-  public setTraceID(traceID: string): void {
-    this.traceID = traceID;
   }
 }
