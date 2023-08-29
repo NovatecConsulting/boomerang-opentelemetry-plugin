@@ -1,4 +1,4 @@
-import api, { context, trace, Span } from '@opentelemetry/api';
+import api, { context, trace, Span, SpanContext } from '@opentelemetry/api';
 import {
   AlwaysOnSampler,
   AlwaysOffSampler,
@@ -109,7 +109,7 @@ export default class OpenTelemetryTracingImpl {
   private customSpanProcessor = new CustomSpanProcessor();
   private customIdGenerator = new CustomIdGenerator(this);
   private traceId: string;
-  private spanId: string;
+  private transactionSpan: Span;
 
   public register = () => {
     // return if already initialized
@@ -210,12 +210,17 @@ export default class OpenTelemetryTracingImpl {
     console.info("TraceID set " + traceId);
   }
 
-  public getTransactionSpanId = () => {
-    return this.spanId;
+  public getTransactionSpan = () => {
+    return this.transactionSpan;
   }
 
-  public setTransactionSpanId = (spanId: string) => {
-    this.spanId = spanId;
+  public setTransactionSpan = (span: Span) => {
+    this.transactionSpan = span;
+    console.info("Context set " + span);
+
+    window.addEventListener("beforeunload", () => {
+      this.transactionSpan.end();
+    });
   }
 
   public startNewTransaction = () => {

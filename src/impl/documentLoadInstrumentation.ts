@@ -11,24 +11,13 @@ export interface DocumentLoadServerTimingInstrumentationConfig extends Instrumen
   ignoreUrls?: (string|RegExp)[];
 }
 
-function addExtraDocLoadTags(span: api.Span) {
-  if (document.referrer && document.referrer !== '') {
-    span.setAttribute('document.referrer', document.referrer);
-  }
-  if (window.screen) {
-    span.setAttribute('screen.xy', window.screen.width + 'x' + window.screen.height);
-  }
-}
-
 type PerformanceEntriesWithServerTiming = PerformanceEntries & {serverTiming?: ReadonlyArray<({name: string, duration: number, description: string})>}
-
 type ExposedSuper = {
   _startSpan(spanName: string, performanceName: string, entries: PerformanceEntries, parentSpan?: Span): api.Span | undefined;
   _endSpan(span: api.Span | undefined, performanceName: string, entries: PerformanceEntries): void;
 }
 
 export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrumentation {
-
   readonly component: string = 'document-load-server-timing';
   moduleName = this.component;
 
@@ -39,10 +28,7 @@ export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrum
 
     const _superStartSpan: ExposedSuper['_startSpan'] = exposedSuper._startSpan.bind(this);
     exposedSuper._startSpan = (spanName, performanceName, entries, parentSpan) => {
-      if (
-        !(entries as PerformanceEntriesWithServerTiming).serverTiming &&
-        performance.getEntriesByType
-      ) {
+      if (!(entries as PerformanceEntriesWithServerTiming).serverTiming && performance.getEntriesByType) {
         const navEntries = performance.getEntriesByType('navigation');
         // @ts-ignore
         if (navEntries[0]?.serverTiming) {
@@ -50,27 +36,24 @@ export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrum
           (entries as PerformanceEntriesWithServerTiming).serverTiming = navEntries[0].serverTiming;
         }
       }
+
       captureTraceParentFromPerformanceEntries(entries, impl);
-
       const span = _superStartSpan(spanName, performanceName, entries, parentSpan);
-
-      if(parentSpan == null) {
-        const transactionSpanId = span.spanContext().spanId;
-        impl.setTransactionSpanId(transactionSpanId);
-      }
+      const exposedSpan = span as any as Span;
+      if(exposedSpan.name == "documentLoad") impl.setTransactionSpan(span);
 
       return span;
     }
 
     const _superEndSpan: ExposedSuper['_endSpan'] = exposedSuper._endSpan.bind(this);
     exposedSuper._endSpan = (span, performanceName, entries) => {
-
       const transactionTraceId = impl.getTransactionTraceId();
+
       if(transactionTraceId) {
-        const transactionSpanId = impl.getTransactionSpanId();
-        const currentSpanId = span.spanContext().spanId;
-        //Don't close current span, if it's the transaction span
-        //if(transactionSpanId && transactionSpanId == currentSpanId) return;
+        const transactionSpan = impl.getTransactionSpan();
+        //Don't close span, if it's the transaction span
+        //Transaction span will be closed through "beforeunload"-event
+        if(transactionSpan && transactionSpan == span) return;
       }
 
       return _superEndSpan(span, performanceName, entries);

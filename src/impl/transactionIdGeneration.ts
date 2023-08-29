@@ -36,7 +36,7 @@ export class CustomIdGenerator implements IdGenerator {
    */
   getTransactionTraceId(): () => string {
     const transactionTraceId = this.impl.getTransactionTraceId();
-    console.info("TransactionId: " + transactionTraceId)
+    console.info("TransactionTraceId: " + transactionTraceId)
     // Use Trace-ID from server-timing-header, if existing
     if(transactionTraceId) {
       return () => transactionTraceId;
