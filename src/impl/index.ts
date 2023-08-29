@@ -109,6 +109,7 @@ export default class OpenTelemetryTracingImpl {
   private customSpanProcessor = new CustomSpanProcessor();
   private customIdGenerator = new CustomIdGenerator(this);
   private traceId: string;
+  private spanId: string;
 
   public register = () => {
     // return if already initialized
@@ -209,7 +210,21 @@ export default class OpenTelemetryTracingImpl {
     console.info("TraceID set " + traceId);
   }
 
+  public getTransactionSpanId = () => {
+    return this.spanId;
+  }
+
+  public setTransactionSpanId = (spanId: string) => {
+    this.spanId = spanId;
+  }
+
   public startNewTransaction = () => {
+    // const testSpan = api.trace.getTracer('my-awesome-tracer').startSpan('awesome-trace');
+    // window.addEventListener("beforeunload", () => {
+    //   //FUNCT NICHT...
+    //   testSpan.end();
+    //   testSpan.isRecording();
+    // })
     this.traceId = null;
     const newTraceId = this.customIdGenerator.generateTraceId();
     this.traceId = newTraceId;

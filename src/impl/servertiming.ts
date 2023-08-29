@@ -1,5 +1,4 @@
 // Also see: https://github.com/signalfx/splunk-otel-js-web/blob/main/packages/web/src/servertiming.ts
-import { Span } from '@opentelemetry/api';
 import { PerformanceEntries } from '@opentelemetry/sdk-trace-web';
 import OpenTelemetryTracingImpl from './index'
 
