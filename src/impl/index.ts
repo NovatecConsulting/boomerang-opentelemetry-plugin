@@ -219,24 +219,25 @@ export default class OpenTelemetryTracingImpl {
 
   public setTransactionSpan = (span: Span) => {
     this.transactionSpan = span;
-    console.info("Context set " + span);
+    console.info("Span set");
+    console.info(span);
 
-    window.addEventListener("beforeunload", () => {
+    window.addEventListener("beforeunload", (event) => {
       this.transactionSpan.end();
       this.traceProvider.forceFlush();
-      //Noch kurzer setTimeout() ?
-      setTimeout(function() {}, 500);
+      //This is necessary so the last span can be exported successfully
+      this.sleep(50);
     });
   }
 
+  private sleep(delay: number): void {
+    const start = new Date().getTime();
+    while (new Date().getTime() < start + delay);
+  }
+
   public startNewTransaction = () => {
-    // const testSpan = api.trace.getTracer('my-awesome-tracer').startSpan('awesome-trace');
-    // window.addEventListener("beforeunload", () => {
-    //   //FUNCT NICHT...
-    //   testSpan.end();
-    //   testSpan.isRecording();
-    // })
     this.traceId = null;
+    this.transactionSpan = null;
     const newTraceId = this.customIdGenerator.generateTraceId();
     this.traceId = newTraceId;
   }
