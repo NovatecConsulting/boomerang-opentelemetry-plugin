@@ -6,6 +6,7 @@ import { captureTraceParentFromPerformanceEntries } from './servertiming';
 import { PerformanceEntries } from '@opentelemetry/sdk-trace-web';
 import { Span } from '@opentelemetry/sdk-trace-base';
 import OpenTelemetryTracingImpl from './index'
+import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-user-interaction';
 
 export interface DocumentLoadServerTimingInstrumentationConfig extends InstrumentationConfig {
   ignoreUrls?: (string|RegExp)[];
@@ -58,5 +59,31 @@ export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrum
 
       return _superEndSpan(span, performanceName, entries);
     };
+  }
+}
+
+type ExposedUserInteractionSuper = {
+  _createSpan(element: EventTarget | null | undefined, eventName: string, parentSpan?: api.Span | undefined): api.Span | undefined;
+}
+export class PatchedUserInteractionInstrumentation extends UserInteractionInstrumentation {
+
+  constructor(config: InstrumentationConfig = {}, impl: OpenTelemetryTracingImpl) {
+    super(config);
+
+    const exposedSuper = this as any as ExposedUserInteractionSuper;
+
+    const _superCreateSpan: ExposedUserInteractionSuper['_createSpan'] = exposedSuper._createSpan.bind(this);
+    exposedSuper._createSpan = (element, eventName, parentSpan)=> {
+
+      if(!parentSpan) {
+        const transactionSpan = impl.getTransactionSpan();
+
+        parentSpan = transactionSpan
+        console.info("NEW PARENT SPAN");
+        console.info(parentSpan);
+      }
+
+      return _superCreateSpan(element, eventName, parentSpan);
+    }
   }
 }

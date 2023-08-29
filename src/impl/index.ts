@@ -31,7 +31,10 @@ import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-u
 import { PluginProperties, ContextFunction, PropagationHeader } from '../types';
 import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
 import { MultiSpanProcessor, CustomSpanProcessor } from './spanProcessing';
-import { DocumentLoadServerTimingInstrumentation } from './documentLoadInstrumentation';
+import {
+  DocumentLoadServerTimingInstrumentation,
+  PatchedUserInteractionInstrumentation
+} from './documentLoadInstrumentation';
 import { CustomIdGenerator } from './transactionIdGeneration';
 
 /**
@@ -220,6 +223,9 @@ export default class OpenTelemetryTracingImpl {
 
     window.addEventListener("beforeunload", () => {
       this.transactionSpan.end();
+      this.traceProvider.forceFlush();
+      //Noch kurzer setTimeout() ?
+      setTimeout(function() {}, 500);
     });
   }
 
@@ -351,10 +357,10 @@ export default class OpenTelemetryTracingImpl {
 
     // Instrumentation for user interactions
     if (plugins_config?.instrument_user_interaction?.enabled !== false) {
-      instrumentations.push(new UserInteractionInstrumentation(plugins_config.instrument_user_interaction));
+      instrumentations.push(new PatchedUserInteractionInstrumentation(plugins_config.instrument_user_interaction, this));
     }
     else if (plugins?.instrument_user_interaction !== false) {
-      instrumentations.push(new UserInteractionInstrumentation());
+      instrumentations.push(new PatchedUserInteractionInstrumentation({}, this));
     }
 
     return instrumentations;
