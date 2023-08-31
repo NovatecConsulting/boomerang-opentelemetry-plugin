@@ -6,7 +6,7 @@ function addMatchToSpan(match: RegExpMatchArray, impl: OpenTelemetryTracingImpl)
   if (match && match[1] && match[2]) {
     const traceId = match[1];
     const spanId = match[2];
-    impl.setTransactionTraceId(traceId);
+    if(traceId) impl.setTransactionTraceId(traceId);
   }
 }
 

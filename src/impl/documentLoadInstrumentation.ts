@@ -11,7 +11,7 @@ import {
   XMLHttpRequestInstrumentation,
   XMLHttpRequestInstrumentationConfig
 } from '@opentelemetry/instrumentation-xml-http-request';
-import { trace } from '@opentelemetry/api';
+import { Context, ContextAPI, trace } from '@opentelemetry/api';
 import { hrTime, isUrlIgnored, otperformance } from '@opentelemetry/core';
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions';
 import { EventNames } from "@opentelemetry/instrumentation-xml-http-request/build/src/enums/EventNames"
@@ -121,17 +121,24 @@ export class PatchedXMLHttpRequestInstrumentation extends XMLHttpRequestInstrume
       }
       const spanName = `HTTP ${method.toUpperCase()}`;
 
-      const parentSpan = impl.getTransactionSpan();
+      let activeContext = api.context.active();
+      let contextKey = Symbol.for("OpenTelemetry Context Key SPAN");
+      let activeSpan = activeContext.getValue(contextKey);
 
-      const currentSpan = this.tracer.startSpan(spanName, {
+      // XMLHttpRequestInstrumentation does not find transactionSpan via api.context().active()
+      if(!activeSpan) {
+        const transactionSpan = impl.getTransactionSpan()
+        activeContext = api.trace.setSpan(api.context.active(), transactionSpan);
+      }
+
+      const options = {
         kind: api.SpanKind.CLIENT,
         attributes: {
           [SemanticAttributes.HTTP_METHOD]: method,
           [SemanticAttributes.HTTP_URL]: url,
         },
-      },
-        api.trace.setSpan(api.context.active(), parentSpan)
-      );
+      }
+      const currentSpan = this.tracer.startSpan(spanName, options, activeContext);
 
       currentSpan.addEvent(EventNames.METHOD_OPEN);
 
@@ -147,11 +154,3 @@ export class PatchedXMLHttpRequestInstrumentation extends XMLHttpRequestInstrume
   }
 }
 
-// export class MyTracerProvider extends WebTracerProvider {
-//
-//   private readonly _tracers: Map<string, MyTracer> = new Map();
-// }
-//
-// export class MyTracer extends Tracer {
-//
-// }
