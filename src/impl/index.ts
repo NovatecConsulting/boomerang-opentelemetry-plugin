@@ -33,7 +33,7 @@ import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
 import { MultiSpanProcessor, CustomSpanProcessor } from './spanProcessing';
 import {
   DocumentLoadServerTimingInstrumentation,
-  PatchedUserInteractionInstrumentation
+  PatchedUserInteractionInstrumentation, PatchedXMLHttpRequestInstrumentation
 } from './documentLoadInstrumentation';
 import { CustomIdGenerator } from './transactionIdGeneration';
 
@@ -52,7 +52,6 @@ export default class OpenTelemetryTracingImpl {
       instrument_fetch: true,
       instrument_xhr: true,
       instrument_document_load: true,
-      instrument_document_load_server_timing: true,
       instrument_user_interaction: true,
     },
     plugins_config: {
@@ -75,11 +74,7 @@ export default class OpenTelemetryTracingImpl {
       instrument_document_load: {
         enabled: false,
         path: "",
-      },
-      instrument_document_load_server_timing: {
-        enabled: false,
-        path: "",
-        ignoreUrls: []
+        serverTiming: false
       },
       instrument_user_interaction: {
         enabled: false,
@@ -320,48 +315,74 @@ export default class OpenTelemetryTracingImpl {
     const { plugins, corsUrls, plugins_config } = this.props;
     const instrumentations: any = [];
 
-    // XMLHttpRequest Instrumentation for web plugin
-    if (plugins_config?.instrument_xhr?.enabled !== false) {
-      instrumentations.push(new XMLHttpRequestInstrumentation(plugins_config.instrument_xhr));
-    } else if (plugins?.instrument_xhr !== false) {
-      instrumentations.push(
-        new XMLHttpRequestInstrumentation({
-          propagateTraceHeaderCorsUrls: corsUrls
-        })
-      );
-    }
+    const documentLoadConfig = plugins_config?.instrument_document_load;
 
-    // Instrumentation for the fetch API if available
-    const isFetchAPISupported = 'fetch' in window;
-    if (isFetchAPISupported && plugins_config?.instrument_fetch?.enabled !== false) {
-      instrumentations.push(new FetchInstrumentation(plugins_config.instrument_fetch));
-    }
-    else if (isFetchAPISupported && plugins?.instrument_fetch !== false) {
-      instrumentations.push(new FetchInstrumentation());
-    }
+    //If serverTiming is enabled, use patched Instrumentations
+    if(documentLoadConfig && documentLoadConfig.serverTiming) {
 
-    // Instrumentation for the document on load (initial request)
-    if (plugins_config?.instrument_document_load?.enabled !== false) {
-      instrumentations.push(new DocumentLoadInstrumentation(plugins_config.instrument_document_load));
-    }
-    else if (plugins?.instrument_document_load !== false) {
-      instrumentations.push(new DocumentLoadInstrumentation());
-    }
+      // Instrumentation for document on load (initial request) with server timings
+      if (plugins_config?.instrument_document_load?.enabled !== false) {
+        instrumentations.push(new DocumentLoadServerTimingInstrumentation(plugins_config.instrument_document_load, this));
+      }
+      else if (plugins?.instrument_document_load !== false) {
+        instrumentations.push(new DocumentLoadServerTimingInstrumentation({}, this));
+      }
 
-    // Instrumentation for document on load (initial request) with server timings
-    if (plugins_config?.instrument_document_load_server_timing?.enabled !== false) {
-      instrumentations.push(new DocumentLoadServerTimingInstrumentation(plugins_config.instrument_document_load_server_timing, this));
-    }
-    else if (plugins?.instrument_document_load_server_timing !== false) {
-      instrumentations.push(new DocumentLoadServerTimingInstrumentation({}, this));
-    }
+      // Instrumentation for user interactions
+      if (plugins_config?.instrument_user_interaction?.enabled !== false) {
+        instrumentations.push(new PatchedUserInteractionInstrumentation(plugins_config.instrument_user_interaction, this));
+      }
+      else if (plugins?.instrument_user_interaction !== false) {
+        instrumentations.push(new PatchedUserInteractionInstrumentation({}, this));
+      }
 
-    // Instrumentation for user interactions
-    if (plugins_config?.instrument_user_interaction?.enabled !== false) {
-      instrumentations.push(new PatchedUserInteractionInstrumentation(plugins_config.instrument_user_interaction, this));
+      // XMLHttpRequest Instrumentation for web plugin
+      if (plugins_config?.instrument_xhr?.enabled !== false) {
+        instrumentations.push(new PatchedXMLHttpRequestInstrumentation(plugins_config.instrument_xhr, this));
+      } else if (plugins?.instrument_xhr !== false) {
+        instrumentations.push(
+          new PatchedXMLHttpRequestInstrumentation({ propagateTraceHeaderCorsUrls: corsUrls }, this)
+        );
+      }
+
+      //TODO PATCHING FETCH
     }
-    else if (plugins?.instrument_user_interaction !== false) {
-      instrumentations.push(new PatchedUserInteractionInstrumentation({}, this));
+    else {
+      // Instrumentation for the document on load (initial request)
+      if (plugins_config?.instrument_document_load?.enabled !== false) {
+        instrumentations.push(new DocumentLoadInstrumentation(plugins_config.instrument_document_load));
+      }
+      else if (plugins?.instrument_document_load !== false) {
+        instrumentations.push(new DocumentLoadInstrumentation());
+      }
+
+      // Instrumentation for user interactions
+      if (plugins_config?.instrument_user_interaction?.enabled !== false) {
+        instrumentations.push(new UserInteractionInstrumentation(plugins_config.instrument_user_interaction));
+      }
+      else if (plugins?.instrument_user_interaction !== false) {
+        instrumentations.push(new UserInteractionInstrumentation());
+      }
+
+      // XMLHttpRequest Instrumentation for web plugin
+      if (plugins_config?.instrument_xhr?.enabled !== false) {
+        instrumentations.push(new XMLHttpRequestInstrumentation(plugins_config.instrument_xhr));
+      } else if (plugins?.instrument_xhr !== false) {
+        instrumentations.push(
+          new XMLHttpRequestInstrumentation({
+            propagateTraceHeaderCorsUrls: corsUrls
+          })
+        );
+      }
+
+      // Instrumentation for the fetch API if available
+      const isFetchAPISupported = 'fetch' in window;
+      if (isFetchAPISupported && plugins_config?.instrument_fetch?.enabled !== false) {
+        instrumentations.push(new FetchInstrumentation(plugins_config.instrument_fetch));
+      }
+      else if (isFetchAPISupported && plugins?.instrument_fetch !== false) {
+        instrumentations.push(new FetchInstrumentation());
+      }
     }
 
     return instrumentations;

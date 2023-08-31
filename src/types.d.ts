@@ -33,15 +33,13 @@ export interface OTPluginProperties {
   instrument_fetch: boolean;
   instrument_xhr: boolean;
   instrument_document_load: boolean;
-  instrument_document_load_server_timing: boolean;
   instrument_user_interaction: boolean;
 }
 
 export interface OTPluginConfig {
   instrument_fetch: FetchInstrumentationConfig;
   instrument_xhr: XMLHttpRequestInstrumentationConfig;
-  instrument_document_load: InstrumentationConfig;
-  instrument_document_load_server_timing: DocumentLoadServerTimingInstrumentationConfig;
+  instrument_document_load: DocumentLoadServerTimingInstrumentationConfig;
   instrument_user_interaction: InstrumentationConfig;
 }
 

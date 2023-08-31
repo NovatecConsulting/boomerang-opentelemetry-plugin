@@ -3,17 +3,26 @@ import { InstrumentationConfig } from '@opentelemetry/instrumentation';
 import { DocumentLoadInstrumentation } from '@opentelemetry/instrumentation-document-load';
 import * as api from '@opentelemetry/api';
 import { captureTraceParentFromPerformanceEntries } from './servertiming';
-import { PerformanceEntries } from '@opentelemetry/sdk-trace-web';
-import { Span } from '@opentelemetry/sdk-trace-base';
+import { PerformanceEntries, WebTracerProvider } from '@opentelemetry/sdk-trace-web';
+import { Span, Tracer } from '@opentelemetry/sdk-trace-base';
 import OpenTelemetryTracingImpl from './index'
 import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-user-interaction';
+import {
+  XMLHttpRequestInstrumentation,
+  XMLHttpRequestInstrumentationConfig
+} from '@opentelemetry/instrumentation-xml-http-request';
+import { trace } from '@opentelemetry/api';
+import { hrTime, isUrlIgnored, otperformance } from '@opentelemetry/core';
+import { SemanticAttributes } from '@opentelemetry/semantic-conventions';
+import { EventNames } from "@opentelemetry/instrumentation-xml-http-request/build/src/enums/EventNames"
+import { XhrMem } from '@opentelemetry/instrumentation-xml-http-request/build/esm/types';
 
 export interface DocumentLoadServerTimingInstrumentationConfig extends InstrumentationConfig {
-  ignoreUrls?: (string|RegExp)[];
+  serverTiming?: boolean;
 }
 
 type PerformanceEntriesWithServerTiming = PerformanceEntries & {serverTiming?: ReadonlyArray<({name: string, duration: number, description: string})>}
-type ExposedSuper = {
+type ExposedDocumentLoadSuper = {
   _startSpan(spanName: string, performanceName: string, entries: PerformanceEntries, parentSpan?: Span): api.Span | undefined;
   _endSpan(span: api.Span | undefined, performanceName: string, entries: PerformanceEntries): void;
 }
@@ -25,9 +34,9 @@ export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrum
   constructor(config: DocumentLoadServerTimingInstrumentationConfig = {}, impl: OpenTelemetryTracingImpl) {
     super(config);
 
-    const exposedSuper = this as any as ExposedSuper;
+    const exposedSuper = this as any as ExposedDocumentLoadSuper;
 
-    const _superStartSpan: ExposedSuper['_startSpan'] = exposedSuper._startSpan.bind(this);
+    const _superStartSpan: ExposedDocumentLoadSuper['_startSpan'] = exposedSuper._startSpan.bind(this);
     exposedSuper._startSpan = (spanName, performanceName, entries, parentSpan) => {
       if (!(entries as PerformanceEntriesWithServerTiming).serverTiming && performance.getEntriesByType) {
         const navEntries = performance.getEntriesByType('navigation');
@@ -46,7 +55,7 @@ export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrum
       return span;
     }
 
-    const _superEndSpan: ExposedSuper['_endSpan'] = exposedSuper._endSpan.bind(this);
+    const _superEndSpan: ExposedDocumentLoadSuper['_endSpan'] = exposedSuper._endSpan.bind(this);
     exposedSuper._endSpan = (span, performanceName, entries) => {
       const transactionTraceId = impl.getTransactionTraceId();
 
@@ -54,7 +63,11 @@ export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrum
         const transactionSpan = impl.getTransactionSpan();
         //Don't close span, if it's the transaction span
         //Transaction span will be closed through "beforeunload"-event
-        if(transactionSpan && transactionSpan == span) return;
+        if(transactionSpan && transactionSpan == span) {
+           //trace.setSpan(api.context.active(), transactionSpan);
+          //api.context.
+          return;
+        }
       }
 
       return _superEndSpan(span, performanceName, entries);
@@ -75,15 +88,70 @@ export class PatchedUserInteractionInstrumentation extends UserInteractionInstru
     const _superCreateSpan: ExposedUserInteractionSuper['_createSpan'] = exposedSuper._createSpan.bind(this);
     exposedSuper._createSpan = (element, eventName, parentSpan)=> {
 
-      if(!parentSpan) {
-        const transactionSpan = impl.getTransactionSpan();
-
-        parentSpan = transactionSpan
-        console.info("NEW PARENT SPAN");
-        console.info(parentSpan);
-      }
+      // UserInteractionInstrumentation does not find transactionSpan via api.context().active()
+      if(!parentSpan) parentSpan = impl.getTransactionSpan();
 
       return _superCreateSpan(element, eventName, parentSpan);
     }
   }
 }
+
+type ExposedXMLHttpRequestSuper = {
+  _createSpan(xhr: XMLHttpRequest, url: string, method: string): api.Span | undefined;
+  _getConfig(): XMLHttpRequestInstrumentationConfig;
+  _cleanPreviousSpanInformation(xhr: XMLHttpRequest): void;
+  _xhrMem: WeakMap<XMLHttpRequest, XhrMem>;
+}
+export class PatchedXMLHttpRequestInstrumentation extends XMLHttpRequestInstrumentation {
+
+  constructor(config: XMLHttpRequestInstrumentationConfig = {}, impl: OpenTelemetryTracingImpl) {
+    super(config);
+
+    const exposedSuper = this as any as ExposedXMLHttpRequestSuper;
+
+    const _superCreateSpan: ExposedXMLHttpRequestSuper['_createSpan'] = exposedSuper._createSpan.bind(this);
+    const _superGetConfig: ExposedXMLHttpRequestSuper['_getConfig'] = exposedSuper._getConfig.bind(this);
+    const _superCleanPreviousSpanInformation: ExposedXMLHttpRequestSuper['_cleanPreviousSpanInformation'] = exposedSuper._cleanPreviousSpanInformation.bind(this);
+    const _superXhrMem: ExposedXMLHttpRequestSuper['_xhrMem'] = exposedSuper._xhrMem;
+
+    exposedSuper._createSpan = (xhr, url, method)=> {
+      if (isUrlIgnored(url, _superGetConfig().ignoreUrls)) {
+        this._diag.debug('ignoring span as url matches ignored url');
+        return;
+      }
+      const spanName = `HTTP ${method.toUpperCase()}`;
+
+      const parentSpan = impl.getTransactionSpan();
+
+      const currentSpan = this.tracer.startSpan(spanName, {
+        kind: api.SpanKind.CLIENT,
+        attributes: {
+          [SemanticAttributes.HTTP_METHOD]: method,
+          [SemanticAttributes.HTTP_URL]: url,
+        },
+      },
+        api.trace.setSpan(api.context.active(), parentSpan)
+      );
+
+      currentSpan.addEvent(EventNames.METHOD_OPEN);
+
+      _superCleanPreviousSpanInformation(xhr);
+
+      _superXhrMem.set(xhr, {
+        span: currentSpan,
+        spanUrl: url,
+      });
+
+      return currentSpan;
+    }
+  }
+}
+
+// export class MyTracerProvider extends WebTracerProvider {
+//
+//   private readonly _tracers: Map<string, MyTracer> = new Map();
+// }
+//
+// export class MyTracer extends Tracer {
+//
+// }
