@@ -32,7 +32,7 @@ import { PluginProperties, ContextFunction, PropagationHeader } from '../types';
 import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
 import { MultiSpanProcessor, CustomSpanProcessor } from './spanProcessing';
 import {
-  DocumentLoadServerTimingInstrumentation,
+  DocumentLoadServerTimingInstrumentation, PatchedFetchInstrumentation,
   PatchedUserInteractionInstrumentation, PatchedXMLHttpRequestInstrumentation
 } from './documentLoadInstrumentation';
 import { CustomIdGenerator } from './transactionIdGeneration';
@@ -345,7 +345,14 @@ export default class OpenTelemetryTracingImpl {
         );
       }
 
-      //TODO PATCHING FETCH
+      // Instrumentation for the fetch API if available
+      const isFetchAPISupported = 'fetch' in window;
+      if (isFetchAPISupported && plugins_config?.instrument_fetch?.enabled !== false) {
+        instrumentations.push(new PatchedFetchInstrumentation(plugins_config.instrument_fetch, this));
+      }
+      else if (isFetchAPISupported && plugins?.instrument_fetch !== false) {
+        instrumentations.push(new PatchedFetchInstrumentation({}, this));
+      }
     }
     else {
       // Instrumentation for the document on load (initial request)
