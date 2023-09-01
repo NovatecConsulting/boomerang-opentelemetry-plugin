@@ -16,7 +16,8 @@ import { FetchInstrumentation, FetchInstrumentationConfig } from '@opentelemetry
 import { createContextKey } from '@opentelemetry/api';
 
 export interface DocumentLoadServerTimingInstrumentationConfig extends InstrumentationConfig {
-  serverTiming?: boolean;
+  recordTransaction?: boolean;
+  exporterDelay?: number;
 }
 
 type PerformanceEntriesWithServerTiming = PerformanceEntries & {serverTiming?: ReadonlyArray<({name: string, duration: number, description: string})>}

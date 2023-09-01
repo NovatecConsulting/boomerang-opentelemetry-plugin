@@ -74,7 +74,8 @@ export default class OpenTelemetryTracingImpl {
       instrument_document_load: {
         enabled: false,
         path: "",
-        serverTiming: false
+        recordTransaction: false,
+        exporterDelay: 50
       },
       instrument_user_interaction: {
         enabled: false,
@@ -220,21 +221,23 @@ export default class OpenTelemetryTracingImpl {
     window.addEventListener("beforeunload", (event) => {
       this.transactionSpan.end();
       this.traceProvider.forceFlush();
-      //This is necessary so the last span can be exported successfully
-      this.sleep(50);
+      //Synchronous blocking is necessary so the span can be exported successfully
+      this.sleep();
     });
   }
 
-  private sleep(delay: number): void {
+  private sleep = () => {
+    const { plugins_config } = this.props;
+    const delay = plugins_config?.instrument_document_load.exporterDelay;
     const start = new Date().getTime();
     while (new Date().getTime() < start + delay);
   }
 
   public startNewTransaction = () => {
+    this.transactionSpan.end();
     this.traceId = null;
-    this.transactionSpan = null;
     const newTraceId = this.customIdGenerator.generateTraceId();
-    this.traceId = newTraceId;
+    this.setTransactionTraceId(newTraceId);
   }
 
   public setBeaconUrl = (url: string) => {
@@ -315,10 +318,10 @@ export default class OpenTelemetryTracingImpl {
     const { plugins, corsUrls, plugins_config } = this.props;
     const instrumentations: any = [];
 
-    const documentLoadConfig = plugins_config?.instrument_document_load;
-
-    //If serverTiming is enabled, use patched Instrumentations
-    if(documentLoadConfig && documentLoadConfig.serverTiming) {
+    //If recordTransaction is enabled, use patched Instrumentations
+    if(plugins_config &&
+      plugins_config.instrument_document_load &&
+      plugins_config.instrument_document_load.recordTransaction) {
 
       // Instrumentation for document on load (initial request) with server timings
       if (plugins_config?.instrument_document_load?.enabled !== false) {
