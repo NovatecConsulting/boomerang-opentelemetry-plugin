@@ -118,7 +118,7 @@ export default class OpenTelemetryTracingImpl {
     this.instrumentTracerClass();
 
     // If recordTransaction is enabled, patch the Tracer to use the transaction span as root span
-    if(this.props.plugins_config?.instrument_document_load?.recordTransaction)
+    if(this.isTransactionRecordingEnabled())
       patchTracer(this);
 
     // the configuration used by the tracer
@@ -207,7 +207,8 @@ export default class OpenTelemetryTracingImpl {
   }
 
   public setTransactionTraceId = (traceId: string) => {
-    this.transactionTraceId = traceId;
+    if(this.isTransactionRecordingEnabled())
+      this.transactionTraceId = traceId;
   }
 
   public getTransactionSpan = () => {
@@ -215,37 +216,23 @@ export default class OpenTelemetryTracingImpl {
   }
 
   public setTransactionSpan = (span: Span) => {
-    this.transactionSpan = span;
+    if(this.isTransactionRecordingEnabled()) {
+      this.transactionSpan = span;
 
-    window.addEventListener("beforeunload", (event) => {
-      this.transactionSpan.end();
-      this.traceProvider.forceFlush();
-      //Synchronous blocking is necessary, so the span can be exported successfully
-      this.sleep();
-    });
-  }
-
-  private sleep = () => {
-    const { plugins_config } = this.props;
-    let delay = plugins_config?.instrument_document_load.exporterDelay;
-    if(!delay) delay = 20;
-
-    const start = new Date().getTime();
-    while (new Date().getTime() < start + delay);
+      window.addEventListener("beforeunload", (event) => {
+        this.transactionSpan.end();
+        this.traceProvider.forceFlush();
+        //Synchronous blocking is necessary, so the span can be exported successfully
+        this.sleep();
+      });
+    }
   }
 
   public startNewTransaction = (spanName: string) => {
-    const { plugins_config } = this.props;
     // Check if transactions should be recorded, otherwise don't start transaction
-    if(plugins_config.instrument_document_load) {
-      if (!plugins_config.instrument_document_load.recordTransaction) {
+    if(!this.isTransactionRecordingEnabled()) {
         console.warn("No Transaction started: Transaction recording is disabled");
         return;
-      }
-    }
-    else {
-      console.warn("No Transaction started: Configuration not found");
-      return;
     }
 
     const currentTransactionSpan = this.getTransactionSpan();
@@ -267,6 +254,19 @@ export default class OpenTelemetryTracingImpl {
   public setBeaconUrl = (url: string) => {
     this.beaconUrl = url;
   };
+
+  private sleep = () => {
+    const { plugins_config } = this.props;
+    let delay = plugins_config?.instrument_document_load?.exporterDelay;
+    if(!delay) delay = 20;
+
+    const start = new Date().getTime();
+    while (new Date().getTime() < start + delay);
+  }
+
+  private isTransactionRecordingEnabled = ():boolean => {
+    return this.props.plugins_config?.instrument_document_load?.recordTransaction;
+  }
 
   /**
    * @returns Returns the configured context propagator for injecting the trace context into HTTP request headers.
@@ -344,8 +344,7 @@ export default class OpenTelemetryTracingImpl {
 
     // Instrumentation for the document on load (initial request)
     if (plugins_config?.instrument_document_load?.enabled !== false) {
-      // If recordTransaction is enabled, use another DocumentLoadInstrumentation
-      if(plugins_config?.instrument_document_load?.recordTransaction !== false)
+      if(this.isTransactionRecordingEnabled())
         instrumentations.push(new DocumentLoadServerTimingInstrumentation(plugins_config.instrument_document_load, this));
       else
         instrumentations.push(new DocumentLoadInstrumentation(plugins_config.instrument_document_load));
