@@ -6,26 +6,21 @@ import { captureTraceParentFromPerformanceEntries } from './servertiming';
 import { PerformanceEntries } from '@opentelemetry/sdk-trace-web';
 import { Span, Tracer } from '@opentelemetry/sdk-trace-base';
 import OpenTelemetryTracingImpl from './index'
-import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-user-interaction';
-import { XMLHttpRequestInstrumentation, XMLHttpRequestInstrumentationConfig } from '@opentelemetry/instrumentation-xml-http-request';
-import { isUrlIgnored } from '@opentelemetry/core';
-import { SemanticAttributes } from '@opentelemetry/semantic-conventions';
-import { EventNames } from "@opentelemetry/instrumentation-xml-http-request/build/src/enums/EventNames"
-import { XhrMem } from '@opentelemetry/instrumentation-xml-http-request/build/esm/types';
-import { FetchInstrumentation, FetchInstrumentationConfig } from '@opentelemetry/instrumentation-fetch';
-import { createContextKey } from '@opentelemetry/api';
 
 import { isTracingSuppressed } from '@opentelemetry/core/build/src/trace/suppress-tracing'
 import { sanitizeAttributes } from '@opentelemetry/core/build/src/common/attributes';
 
 export interface DocumentLoadServerTimingInstrumentationConfig extends InstrumentationConfig {
-  recordTransaction?: boolean;
-  exporterDelay?: number;
+  recordTransaction: boolean;
+  exporterDelay: number;
 }
 
-export function patchTracer() {
-  const originalStartSpanFunction = Tracer.prototype.startSpan;
-
+/**
+ * Patch the Tracer class to use the transaction span as root span
+ */
+export function patchTracer(impl: OpenTelemetryTracingImpl) {
+  // Overwrite startSpan in Tracer class
+  // Copy of the original startSpan()-function with additional logic inside the function to determine the parentContext
   Tracer.prototype.startSpan = function (
     name: string,
     options: api.SpanOptions = {},
@@ -40,6 +35,12 @@ export function patchTracer() {
     let parentContext; //getParent(options, context);
     if(options.root) parentContext = undefined;
     else parentContext = api.trace.getSpanContext(context);
+
+    if(!parentContext) {
+      const transactionSpan = impl.getTransactionSpan();
+      if(transactionSpan)
+        parentContext = transactionSpan.spanContext();
+    }
 
     const spanId = this._idGenerator.generateSpanId();
     let traceId;
@@ -92,8 +93,6 @@ export function patchTracer() {
     );
     // Set default attributes
     span.setAttributes(Object.assign(attributes, samplingResult.attributes));
-
-    console.info("EDI WAR HIER");
     return span;
   }
 }
@@ -108,7 +107,7 @@ export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrum
   readonly component: string = 'document-load-server-timing';
   moduleName = this.component;
 
-  constructor(config: DocumentLoadServerTimingInstrumentationConfig = {}, impl: OpenTelemetryTracingImpl) {
+  constructor(config: DocumentLoadServerTimingInstrumentationConfig, impl: OpenTelemetryTracingImpl) {
     super(config);
     const exposedSuper = this as any as ExposedDocumentLoadSuper;
     const _superStartSpan: ExposedDocumentLoadSuper['_startSpan'] = exposedSuper._startSpan.bind(this);
@@ -143,120 +142,3 @@ export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrum
     };
   }
 }
-
-type ExposedUserInteractionSuper = {
-  _createSpan(element: EventTarget | null | undefined, eventName: string, parentSpan?: api.Span | undefined): api.Span | undefined;
-}
-export class PatchedUserInteractionInstrumentation extends UserInteractionInstrumentation {
-
-  constructor(config: InstrumentationConfig = {}, impl: OpenTelemetryTracingImpl) {
-    super(config);
-    const exposedSuper = this as any as ExposedUserInteractionSuper;
-    const _superCreateSpan: ExposedUserInteractionSuper['_createSpan'] = exposedSuper._createSpan.bind(this);
-
-    exposedSuper._createSpan = (element, eventName, parentSpan)=> {
-      // UserInteractionInstrumentation does not find transactionSpan via api.context().active()
-      if(!parentSpan) parentSpan = impl.getTransactionSpan();
-
-      return _superCreateSpan(element, eventName, parentSpan);
-    }
-  }
-}
-
-type ExposedXMLHttpRequestSuper = {
-  _createSpan(xhr: XMLHttpRequest, url: string, method: string): api.Span | undefined;
-  _getConfig(): XMLHttpRequestInstrumentationConfig;
-  _cleanPreviousSpanInformation(xhr: XMLHttpRequest): void;
-  _xhrMem: WeakMap<XMLHttpRequest, XhrMem>;
-}
-export class PatchedXMLHttpRequestInstrumentation extends XMLHttpRequestInstrumentation {
-
-  constructor(config: XMLHttpRequestInstrumentationConfig = {}, impl: OpenTelemetryTracingImpl) {
-    super(config);
-    const exposedSuper = this as any as ExposedXMLHttpRequestSuper;
-    const _superGetConfig: ExposedXMLHttpRequestSuper['_getConfig'] = exposedSuper._getConfig.bind(this);
-    const _superCleanPreviousSpanInformation: ExposedXMLHttpRequestSuper['_cleanPreviousSpanInformation'] = exposedSuper._cleanPreviousSpanInformation.bind(this);
-    const _superXhrMem: ExposedXMLHttpRequestSuper['_xhrMem'] = exposedSuper._xhrMem;
-
-    // Copy of original _createSpan()-function with additional check if transactionSpan can be used
-    exposedSuper._createSpan = (xhr, url, method)=> {
-      if (isUrlIgnored(url, _superGetConfig().ignoreUrls)) {
-        this._diag.debug('ignoring span as url matches ignored url');
-        return;
-      }
-      const spanName = `HTTP ${method.toUpperCase()}`;
-
-      let activeContext = api.context.active();
-      let contextKey = createContextKey("OpenTelemetry Context Key SPAN");
-      let activeSpan = activeContext.getValue(contextKey);
-
-      // XMLHttpRequestInstrumentation does not find transactionSpan via api.context().active()
-      if(!activeSpan) {
-        const transactionSpan = impl.getTransactionSpan()
-        activeContext = api.trace.setSpan(api.context.active(), transactionSpan);
-      }
-
-      const options = {
-        kind: api.SpanKind.CLIENT,
-        attributes: {
-          [SemanticAttributes.HTTP_METHOD]: method,
-          [SemanticAttributes.HTTP_URL]: url,
-        }
-      }
-      const currentSpan = this.tracer.startSpan(spanName, options, activeContext);
-
-      currentSpan.addEvent(EventNames.METHOD_OPEN);
-
-      _superCleanPreviousSpanInformation(xhr);
-
-      _superXhrMem.set(xhr, {
-        span: currentSpan,
-        spanUrl: url,
-      });
-
-      return currentSpan;
-    }
-  }
-}
-
-type ExposedFetchSuper = {
-  _createSpan(url: string, options: Partial<Request | RequestInit>): api.Span | undefined;
-  _getConfig(): FetchInstrumentationConfig;
-}
-export class PatchedFetchInstrumentation extends FetchInstrumentation {
-
-  constructor(config: FetchInstrumentationConfig = {}, impl: OpenTelemetryTracingImpl) {
-    super(config);
-    const exposedSuper = this as any as ExposedFetchSuper;
-    const _superGetConfig: ExposedFetchSuper['_getConfig'] = exposedSuper._getConfig.bind(this);
-
-    exposedSuper._createSpan = (url, options = {})=> {
-      if (isUrlIgnored(url, _superGetConfig().ignoreUrls)) {
-        this._diag.debug('ignoring span as url matches ignored url');
-        return;
-      }
-      const method = (options.method || 'GET').toUpperCase();
-      const spanName = `HTTP ${method}`;
-
-      let activeContext = api.context.active();
-      let contextKey = createContextKey("OpenTelemetry Context Key SPAN");
-      let activeSpan = activeContext.getValue(contextKey);
-
-      // FetchInstrumentation does not find transactionSpan via api.context().active()
-      if(!activeSpan) {
-        const transactionSpan = impl.getTransactionSpan()
-        activeContext = api.trace.setSpan(api.context.active(), transactionSpan);
-      }
-
-      const spanOptions = {
-        kind: api.SpanKind.CLIENT,
-        attributes: {
-          [SemanticAttributes.HTTP_METHOD]: method,
-          [SemanticAttributes.HTTP_URL]: url,
-        }
-      }
-      return this.tracer.startSpan(spanName, spanOptions, activeContext);
-    }
-  }
-}
-

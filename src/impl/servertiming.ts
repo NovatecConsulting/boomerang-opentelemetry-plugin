@@ -2,7 +2,7 @@
 import { PerformanceEntries } from '@opentelemetry/sdk-trace-web';
 import OpenTelemetryTracingImpl from './index'
 
-function addMatchToSpan(match: RegExpMatchArray, impl: OpenTelemetryTracingImpl): void {
+function setTransactionId(match: RegExpMatchArray, impl: OpenTelemetryTracingImpl): void {
   if (match && match[1] && match[2]) {
     const traceId = match[1];
     const spanId = match[2];
@@ -19,7 +19,7 @@ export function captureTraceParentFromPerformanceEntries(entries: PerformanceEnt
   for(const st of (entries as any).serverTiming) {
     if (st.name === 'traceparent' && st.description) {
       const match = st.description.match(ValueRegex);
-      addMatchToSpan(match, impl);
+      setTransactionId(match, impl);
     }
   }
 }

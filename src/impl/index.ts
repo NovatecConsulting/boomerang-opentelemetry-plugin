@@ -31,10 +31,7 @@ import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-u
 import { PluginProperties, ContextFunction, PropagationHeader } from '../types';
 import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
 import { MultiSpanProcessor, CustomSpanProcessor } from './spanProcessing';
-import {
-  DocumentLoadServerTimingInstrumentation, PatchedFetchInstrumentation,
-  PatchedUserInteractionInstrumentation, PatchedXMLHttpRequestInstrumentation, patchTracer
-} from './documentLoadInstrumentation';
+import { DocumentLoadServerTimingInstrumentation, patchTracer } from './documentLoadInstrumentation';
 import { CustomIdGenerator } from './transactionIdGeneration';
 
 /**
@@ -120,7 +117,9 @@ export default class OpenTelemetryTracingImpl {
     // instrument the tracer class for injecting default attributes
     this.instrumentTracerClass();
 
-    patchTracer();
+    // If recordTransaction is enabled, patch the Tracer to use the transaction span as root span
+    if(this.props.plugins_config?.instrument_document_load?.recordTransaction)
+      patchTracer(this);
 
     // the configuration used by the tracer
     const tracerConfiguration: WebTracerConfig = {
@@ -251,15 +250,17 @@ export default class OpenTelemetryTracingImpl {
 
     const currentTransactionSpan = this.getTransactionSpan();
     if(currentTransactionSpan) this.transactionSpan.end();
-
+    // Delete current transaction span, after closing it
+    this.setTransactionSpan(null);
     // Delete current transaction trace ID, so the IdGenerator cannot use it
     this.setTransactionTraceId(null);
     const newTraceId = this.customIdGenerator.generateTraceId();
     this.setTransactionTraceId(newTraceId);
 
+    // Just use any existing tracer, for example document-load
     const documentLoadTracerName = "@opentelemetry/instrumentation-document-load";
     const tracer = this.getTracer(documentLoadTracerName, this.OpenTelemetryVersion);
-    const newTransactionSpan = tracer.startSpan(spanName);
+    const newTransactionSpan = tracer.startSpan(spanName, {root: true});
     this.setTransactionSpan(newTransactionSpan);
   }
 
@@ -338,68 +339,16 @@ export default class OpenTelemetryTracingImpl {
   };
 
   private getInstrumentationPlugins = () => {
-    const { plugins_config } = this.props;
-
-    //If recordTransaction is enabled, use patched Instrumentations
-    if(plugins_config &&
-      plugins_config.instrument_document_load &&
-      plugins_config.instrument_document_load.recordTransaction) {
-
-      return this.getPatchedInstrumentationPlugins();
-    }
-    else {
-      return this.getDefaultInstrumentationPlugins();
-    }
-  };
-
-  private getPatchedInstrumentationPlugins = () => {
-    const { plugins, corsUrls, plugins_config } = this.props;
-    const instrumentations: any = [];
-
-    // Instrumentation for document on load (initial request) with server timings
-    if (plugins_config?.instrument_document_load?.enabled !== false) {
-      instrumentations.push(new DocumentLoadServerTimingInstrumentation(plugins_config.instrument_document_load, this));
-    }
-    else if (plugins?.instrument_document_load !== false) {
-      instrumentations.push(new DocumentLoadServerTimingInstrumentation({}, this));
-    }
-
-    // Instrumentation for user interactions
-    if (plugins_config?.instrument_user_interaction?.enabled !== false) {
-      instrumentations.push(new PatchedUserInteractionInstrumentation(plugins_config.instrument_user_interaction, this));
-    }
-    else if (plugins?.instrument_user_interaction !== false) {
-      instrumentations.push(new PatchedUserInteractionInstrumentation({}, this));
-    }
-
-    // XMLHttpRequest Instrumentation for web plugin
-    if (plugins_config?.instrument_xhr?.enabled !== false) {
-      instrumentations.push(new PatchedXMLHttpRequestInstrumentation(plugins_config.instrument_xhr, this));
-    } else if (plugins?.instrument_xhr !== false) {
-      instrumentations.push(
-        new PatchedXMLHttpRequestInstrumentation({ propagateTraceHeaderCorsUrls: corsUrls }, this)
-      );
-    }
-
-    // Instrumentation for the fetch API if available
-    const isFetchAPISupported = 'fetch' in window;
-    if (isFetchAPISupported && plugins_config?.instrument_fetch?.enabled !== false) {
-      instrumentations.push(new PatchedFetchInstrumentation(plugins_config.instrument_fetch, this));
-    }
-    else if (isFetchAPISupported && plugins?.instrument_fetch !== false) {
-      instrumentations.push(new PatchedFetchInstrumentation({}, this));
-    }
-
-    return instrumentations;
-  }
-
-  private getDefaultInstrumentationPlugins = () => {
     const { plugins, corsUrls, plugins_config } = this.props;
     const instrumentations: any = [];
 
     // Instrumentation for the document on load (initial request)
     if (plugins_config?.instrument_document_load?.enabled !== false) {
-      instrumentations.push(new DocumentLoadInstrumentation(plugins_config.instrument_document_load));
+      // If recordTransaction is enabled, use another DocumentLoadInstrumentation
+      if(plugins_config?.instrument_document_load?.recordTransaction !== false)
+        instrumentations.push(new DocumentLoadServerTimingInstrumentation(plugins_config.instrument_document_load, this));
+      else
+        instrumentations.push(new DocumentLoadInstrumentation(plugins_config.instrument_document_load));
     }
     else if (plugins?.instrument_document_load !== false) {
       instrumentations.push(new DocumentLoadInstrumentation());
@@ -434,7 +383,7 @@ export default class OpenTelemetryTracingImpl {
     }
 
     return instrumentations;
-  }
+  };
 
   /**
    * Derives the collector Url based on the beacon one.
