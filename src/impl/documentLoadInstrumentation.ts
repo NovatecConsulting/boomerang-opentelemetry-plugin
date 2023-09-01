@@ -55,14 +55,11 @@ export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrum
     }
 
     exposedSuper._endSpan = (span, performanceName, entries) => {
-      const transactionTraceId = impl.getTransactionTraceId();
 
-      if(transactionTraceId) {
-        const transactionSpan = impl.getTransactionSpan();
-        // Don't close transactionSpan
-        // transactionSpan will be closed through "beforeunload"-event
-        if(transactionSpan && transactionSpan == span) return;
-      }
+      const transactionSpan = impl.getTransactionSpan();
+      // Don't close transactionSpan
+      // transactionSpan will be closed through "beforeunload"-event
+      if(transactionSpan && transactionSpan == span) return;
 
       return _superEndSpan(span, performanceName, entries);
     };

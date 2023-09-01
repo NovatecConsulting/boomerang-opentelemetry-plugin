@@ -1,4 +1,4 @@
-import api, { context, trace, Span, SpanContext } from '@opentelemetry/api';
+import api, { context, trace, Span } from '@opentelemetry/api';
 import {
   AlwaysOnSampler,
   AlwaysOffSampler,
@@ -75,7 +75,7 @@ export default class OpenTelemetryTracingImpl {
         enabled: false,
         path: "",
         recordTransaction: false,
-        exporterDelay: 50
+        exporterDelay: 20
       },
       instrument_user_interaction: {
         enabled: false,
@@ -107,8 +107,9 @@ export default class OpenTelemetryTracingImpl {
 
   private customSpanProcessor = new CustomSpanProcessor();
   private customIdGenerator = new CustomIdGenerator(this);
-  private traceId: string;
+  private transactionTraceId: string;
   private transactionSpan: Span;
+  private readonly OpenTelemetryVersion = "0.25.0";
 
   public register = () => {
     // return if already initialized
@@ -201,12 +202,11 @@ export default class OpenTelemetryTracingImpl {
   }
 
   public getTransactionTraceId = () => {
-    return this.traceId;
+    return this.transactionTraceId;
   }
 
   public setTransactionTraceId = (traceId: string) => {
-    this.traceId = traceId;
-    console.info("TraceID set " + traceId);
+    this.transactionTraceId = traceId;
   }
 
   public getTransactionSpan = () => {
@@ -215,29 +215,50 @@ export default class OpenTelemetryTracingImpl {
 
   public setTransactionSpan = (span: Span) => {
     this.transactionSpan = span;
-    console.info("Span set");
-    console.info(span);
 
     window.addEventListener("beforeunload", (event) => {
       this.transactionSpan.end();
       this.traceProvider.forceFlush();
-      //Synchronous blocking is necessary so the span can be exported successfully
+      //Synchronous blocking is necessary, so the span can be exported successfully
       this.sleep();
     });
   }
 
   private sleep = () => {
     const { plugins_config } = this.props;
-    const delay = plugins_config?.instrument_document_load.exporterDelay;
+    let delay = plugins_config?.instrument_document_load.exporterDelay;
+    if(!delay) delay = 20;
+
     const start = new Date().getTime();
     while (new Date().getTime() < start + delay);
   }
 
-  public startNewTransaction = () => {
-    this.transactionSpan.end();
-    this.traceId = null;
+  public startNewTransaction = (spanName: string) => {
+    const { plugins_config } = this.props;
+    // Check if transactions should be recorded, otherwise don't start transaction
+    if(plugins_config.instrument_document_load) {
+      if (!plugins_config.instrument_document_load.recordTransaction) {
+        console.warn("No Transaction started: Transaction recording is disabled");
+        return;
+      }
+    }
+    else {
+      console.warn("No Transaction started: Configuration not found");
+      return;
+    }
+
+    const currentTransactionSpan = this.getTransactionSpan();
+    if(currentTransactionSpan) this.transactionSpan.end();
+
+    // Delete current transaction trace ID, so the IdGenerator cannot use it
+    this.setTransactionTraceId(null);
     const newTraceId = this.customIdGenerator.generateTraceId();
     this.setTransactionTraceId(newTraceId);
+
+    const documentLoadTracerName = "@opentelemetry/instrumentation-document-load";
+    const tracer = this.getTracer(documentLoadTracerName, this.OpenTelemetryVersion);
+    const newTransactionSpan = tracer.startSpan(spanName);
+    this.setTransactionSpan(newTransactionSpan);
   }
 
   public setBeaconUrl = (url: string) => {
@@ -315,88 +336,103 @@ export default class OpenTelemetryTracingImpl {
   };
 
   private getInstrumentationPlugins = () => {
-    const { plugins, corsUrls, plugins_config } = this.props;
-    const instrumentations: any = [];
+    const { plugins_config } = this.props;
 
     //If recordTransaction is enabled, use patched Instrumentations
     if(plugins_config &&
       plugins_config.instrument_document_load &&
       plugins_config.instrument_document_load.recordTransaction) {
 
-      // Instrumentation for document on load (initial request) with server timings
-      if (plugins_config?.instrument_document_load?.enabled !== false) {
-        instrumentations.push(new DocumentLoadServerTimingInstrumentation(plugins_config.instrument_document_load, this));
-      }
-      else if (plugins?.instrument_document_load !== false) {
-        instrumentations.push(new DocumentLoadServerTimingInstrumentation({}, this));
-      }
-
-      // Instrumentation for user interactions
-      if (plugins_config?.instrument_user_interaction?.enabled !== false) {
-        instrumentations.push(new PatchedUserInteractionInstrumentation(plugins_config.instrument_user_interaction, this));
-      }
-      else if (plugins?.instrument_user_interaction !== false) {
-        instrumentations.push(new PatchedUserInteractionInstrumentation({}, this));
-      }
-
-      // XMLHttpRequest Instrumentation for web plugin
-      if (plugins_config?.instrument_xhr?.enabled !== false) {
-        instrumentations.push(new PatchedXMLHttpRequestInstrumentation(plugins_config.instrument_xhr, this));
-      } else if (plugins?.instrument_xhr !== false) {
-        instrumentations.push(
-          new PatchedXMLHttpRequestInstrumentation({ propagateTraceHeaderCorsUrls: corsUrls }, this)
-        );
-      }
-
-      // Instrumentation for the fetch API if available
-      const isFetchAPISupported = 'fetch' in window;
-      if (isFetchAPISupported && plugins_config?.instrument_fetch?.enabled !== false) {
-        instrumentations.push(new PatchedFetchInstrumentation(plugins_config.instrument_fetch, this));
-      }
-      else if (isFetchAPISupported && plugins?.instrument_fetch !== false) {
-        instrumentations.push(new PatchedFetchInstrumentation({}, this));
-      }
+      return this.getPatchedInstrumentationPlugins();
     }
     else {
-      // Instrumentation for the document on load (initial request)
-      if (plugins_config?.instrument_document_load?.enabled !== false) {
-        instrumentations.push(new DocumentLoadInstrumentation(plugins_config.instrument_document_load));
-      }
-      else if (plugins?.instrument_document_load !== false) {
-        instrumentations.push(new DocumentLoadInstrumentation());
-      }
+      return this.getDefaultInstrumentationPlugins();
+    }
+  };
 
-      // Instrumentation for user interactions
-      if (plugins_config?.instrument_user_interaction?.enabled !== false) {
-        instrumentations.push(new UserInteractionInstrumentation(plugins_config.instrument_user_interaction));
-      }
-      else if (plugins?.instrument_user_interaction !== false) {
-        instrumentations.push(new UserInteractionInstrumentation());
-      }
+  private getPatchedInstrumentationPlugins = () => {
+    const { plugins, corsUrls, plugins_config } = this.props;
+    const instrumentations: any = [];
 
-      // XMLHttpRequest Instrumentation for web plugin
-      if (plugins_config?.instrument_xhr?.enabled !== false) {
-        instrumentations.push(new XMLHttpRequestInstrumentation(plugins_config.instrument_xhr));
-      } else if (plugins?.instrument_xhr !== false) {
-        instrumentations.push(
-          new XMLHttpRequestInstrumentation({
-            propagateTraceHeaderCorsUrls: corsUrls
-          })
-        );
-      }
+    // Instrumentation for document on load (initial request) with server timings
+    if (plugins_config?.instrument_document_load?.enabled !== false) {
+      instrumentations.push(new DocumentLoadServerTimingInstrumentation(plugins_config.instrument_document_load, this));
+    }
+    else if (plugins?.instrument_document_load !== false) {
+      instrumentations.push(new DocumentLoadServerTimingInstrumentation({}, this));
+    }
 
-      // Instrumentation for the fetch API if available
-      const isFetchAPISupported = 'fetch' in window;
-      if (isFetchAPISupported && plugins_config?.instrument_fetch?.enabled !== false) {
-        instrumentations.push(new FetchInstrumentation(plugins_config.instrument_fetch));
-      }
-      else if (isFetchAPISupported && plugins?.instrument_fetch !== false) {
-        instrumentations.push(new FetchInstrumentation());
-      }
+    // Instrumentation for user interactions
+    if (plugins_config?.instrument_user_interaction?.enabled !== false) {
+      instrumentations.push(new PatchedUserInteractionInstrumentation(plugins_config.instrument_user_interaction, this));
+    }
+    else if (plugins?.instrument_user_interaction !== false) {
+      instrumentations.push(new PatchedUserInteractionInstrumentation({}, this));
+    }
+
+    // XMLHttpRequest Instrumentation for web plugin
+    if (plugins_config?.instrument_xhr?.enabled !== false) {
+      instrumentations.push(new PatchedXMLHttpRequestInstrumentation(plugins_config.instrument_xhr, this));
+    } else if (plugins?.instrument_xhr !== false) {
+      instrumentations.push(
+        new PatchedXMLHttpRequestInstrumentation({ propagateTraceHeaderCorsUrls: corsUrls }, this)
+      );
+    }
+
+    // Instrumentation for the fetch API if available
+    const isFetchAPISupported = 'fetch' in window;
+    if (isFetchAPISupported && plugins_config?.instrument_fetch?.enabled !== false) {
+      instrumentations.push(new PatchedFetchInstrumentation(plugins_config.instrument_fetch, this));
+    }
+    else if (isFetchAPISupported && plugins?.instrument_fetch !== false) {
+      instrumentations.push(new PatchedFetchInstrumentation({}, this));
     }
 
     return instrumentations;
-  };
+  }
+
+  private getDefaultInstrumentationPlugins = () => {
+    const { plugins, corsUrls, plugins_config } = this.props;
+    const instrumentations: any = [];
+
+    // Instrumentation for the document on load (initial request)
+    if (plugins_config?.instrument_document_load?.enabled !== false) {
+      instrumentations.push(new DocumentLoadInstrumentation(plugins_config.instrument_document_load));
+    }
+    else if (plugins?.instrument_document_load !== false) {
+      instrumentations.push(new DocumentLoadInstrumentation());
+    }
+
+    // Instrumentation for user interactions
+    if (plugins_config?.instrument_user_interaction?.enabled !== false) {
+      instrumentations.push(new UserInteractionInstrumentation(plugins_config.instrument_user_interaction));
+    }
+    else if (plugins?.instrument_user_interaction !== false) {
+      instrumentations.push(new UserInteractionInstrumentation());
+    }
+
+    // XMLHttpRequest Instrumentation for web plugin
+    if (plugins_config?.instrument_xhr?.enabled !== false) {
+      instrumentations.push(new XMLHttpRequestInstrumentation(plugins_config.instrument_xhr));
+    } else if (plugins?.instrument_xhr !== false) {
+      instrumentations.push(
+        new XMLHttpRequestInstrumentation({
+          propagateTraceHeaderCorsUrls: corsUrls
+        })
+      );
+    }
+
+    // Instrumentation for the fetch API if available
+    const isFetchAPISupported = 'fetch' in window;
+    if (isFetchAPISupported && plugins_config?.instrument_fetch?.enabled !== false) {
+      instrumentations.push(new FetchInstrumentation(plugins_config.instrument_fetch));
+    }
+    else if (isFetchAPISupported && plugins?.instrument_fetch !== false) {
+      instrumentations.push(new FetchInstrumentation());
+    }
+
+    return instrumentations;
+  }
 
   /**
    * Derives the collector Url based on the beacon one.

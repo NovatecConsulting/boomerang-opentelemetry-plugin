@@ -102,6 +102,7 @@ if (currentEntriesFn) {
       if(addToBeacon) window.BOOMR.addVar(key, value);
     },
 
+    // Starts a new transaction, if document_load.recordTransaction is enabled
     startNewTransaction: impl.startNewTransaction,
 
     is_complete: () => {
