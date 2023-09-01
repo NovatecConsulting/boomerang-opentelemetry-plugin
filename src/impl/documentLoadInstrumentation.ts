@@ -161,10 +161,10 @@ export class PatchedFetchInstrumentation extends FetchInstrumentation {
       const spanName = `HTTP ${method}`;
 
       let activeContext = api.context.active();
-      let contextKey = Symbol.for("OpenTelemetry Context Key SPAN");
+      let contextKey = createContextKey("OpenTelemetry Context Key SPAN");
       let activeSpan = activeContext.getValue(contextKey);
 
-      // XMLHttpRequestInstrumentation does not find transactionSpan via api.context().active()
+      // FetchInstrumentation does not find transactionSpan via api.context().active()
       if(!activeSpan) {
         const transactionSpan = impl.getTransactionSpan()
         activeContext = api.trace.setSpan(api.context.active(), transactionSpan);
