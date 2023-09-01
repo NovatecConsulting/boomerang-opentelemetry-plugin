@@ -4,7 +4,7 @@ import { DocumentLoadInstrumentation } from '@opentelemetry/instrumentation-docu
 import * as api from '@opentelemetry/api';
 import { captureTraceParentFromPerformanceEntries } from './servertiming';
 import { PerformanceEntries } from '@opentelemetry/sdk-trace-web';
-import { Span } from '@opentelemetry/sdk-trace-base';
+import { Span, Tracer } from '@opentelemetry/sdk-trace-base';
 import OpenTelemetryTracingImpl from './index'
 import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-user-interaction';
 import { XMLHttpRequestInstrumentation, XMLHttpRequestInstrumentationConfig } from '@opentelemetry/instrumentation-xml-http-request';
@@ -15,9 +15,87 @@ import { XhrMem } from '@opentelemetry/instrumentation-xml-http-request/build/es
 import { FetchInstrumentation, FetchInstrumentationConfig } from '@opentelemetry/instrumentation-fetch';
 import { createContextKey } from '@opentelemetry/api';
 
+import { isTracingSuppressed } from '@opentelemetry/core/build/src/trace/suppress-tracing'
+import { sanitizeAttributes } from '@opentelemetry/core/build/src/common/attributes';
+
 export interface DocumentLoadServerTimingInstrumentationConfig extends InstrumentationConfig {
   recordTransaction?: boolean;
   exporterDelay?: number;
+}
+
+export function patchTracer() {
+  const originalStartSpanFunction = Tracer.prototype.startSpan;
+
+  Tracer.prototype.startSpan = function (
+    name: string,
+    options: api.SpanOptions = {},
+    context = api.context.active()
+  ) {
+
+    if (isTracingSuppressed(context)) {
+      api.diag.debug('Instrumentation suppressed, returning Noop Span');
+      return api.trace.wrapSpanContext(api.INVALID_SPAN_CONTEXT);
+    }
+
+    let parentContext; //getParent(options, context);
+    if(options.root) parentContext = undefined;
+    else parentContext = api.trace.getSpanContext(context);
+
+    const spanId = this._idGenerator.generateSpanId();
+    let traceId;
+    let traceState;
+    let parentSpanId;
+    if (!parentContext || !api.trace.isSpanContextValid(parentContext)) {
+      // New root span.
+      traceId = this._idGenerator.generateTraceId();
+    } else {
+      // New child span.
+      traceId = parentContext.traceId;
+      traceState = parentContext.traceState;
+      parentSpanId = parentContext.spanId;
+    }
+
+    const spanKind = options.kind ?? api.SpanKind.INTERNAL;
+    const links = options.links ?? [];
+    const attributes = sanitizeAttributes(options.attributes);
+    // make sampling decision
+    const samplingResult = this._sampler.shouldSample(
+      options.root
+        ? api.trace.setSpanContext(context, api.INVALID_SPAN_CONTEXT)
+        : context,
+      traceId,
+      name,
+      spanKind,
+      attributes,
+      links
+    );
+
+    const traceFlags =
+      samplingResult.decision === api.SamplingDecision.RECORD_AND_SAMPLED
+        ? api.TraceFlags.SAMPLED
+        : api.TraceFlags.NONE;
+    const spanContext = { traceId, spanId, traceFlags, traceState };
+    if (samplingResult.decision === api.SamplingDecision.NOT_RECORD) {
+      api.diag.debug('Recording is off, propagating context in a non-recording span');
+      return api.trace.wrapSpanContext(spanContext);
+    }
+
+    const span = new Span(
+      this,
+      context,
+      name,
+      spanContext,
+      spanKind,
+      parentSpanId,
+      links,
+      options.startTime
+    );
+    // Set default attributes
+    span.setAttributes(Object.assign(attributes, samplingResult.attributes));
+
+    console.info("EDI WAR HIER");
+    return span;
+  }
 }
 
 type PerformanceEntriesWithServerTiming = PerformanceEntries & {serverTiming?: ReadonlyArray<({name: string, duration: number, description: string})>}

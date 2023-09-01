@@ -33,7 +33,7 @@ import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
 import { MultiSpanProcessor, CustomSpanProcessor } from './spanProcessing';
 import {
   DocumentLoadServerTimingInstrumentation, PatchedFetchInstrumentation,
-  PatchedUserInteractionInstrumentation, PatchedXMLHttpRequestInstrumentation
+  PatchedUserInteractionInstrumentation, PatchedXMLHttpRequestInstrumentation, patchTracer
 } from './documentLoadInstrumentation';
 import { CustomIdGenerator } from './transactionIdGeneration';
 
@@ -119,6 +119,8 @@ export default class OpenTelemetryTracingImpl {
 
     // instrument the tracer class for injecting default attributes
     this.instrumentTracerClass();
+
+    patchTracer();
 
     // the configuration used by the tracer
     const tracerConfiguration: WebTracerConfig = {
