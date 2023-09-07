@@ -42,7 +42,8 @@ export function patchTracer(impl: OpenTelemetryTracingImpl) {
         parentContext = transactionSpan.spanContext();
     }
 
-    const spanId = this._idGenerator.generateSpanId();
+    // Use provided transaction span-ID for documentLoadSpan
+    const spanId = name == "documentLoad" ? impl.getTransactionSpanId() : this._idGenerator.generateSpanId();
     let traceId;
     let traceState;
     let parentSpanId;

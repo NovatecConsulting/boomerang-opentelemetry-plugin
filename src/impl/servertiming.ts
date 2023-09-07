@@ -2,11 +2,12 @@
 import { PerformanceEntries } from '@opentelemetry/sdk-trace-web';
 import OpenTelemetryTracingImpl from './index'
 
-function setTransactionId(match: RegExpMatchArray, impl: OpenTelemetryTracingImpl): void {
+function setTransactionIds(match: RegExpMatchArray, impl: OpenTelemetryTracingImpl): void {
   if (match && match[1] && match[2]) {
     const traceId = match[1];
     const spanId = match[2];
-    if(traceId) impl.setTransactionTraceId(traceId);
+    impl.setTransactionTraceId(traceId);
+    impl.setTransactionSpanId(spanId);
   }
 }
 
@@ -19,7 +20,7 @@ export function captureTraceParentFromPerformanceEntries(entries: PerformanceEnt
   for(const st of (entries as any).serverTiming) {
     if (st.name === 'traceparent' && st.description) {
       const match = st.description.match(ValueRegex);
-      setTransactionId(match, impl);
+      setTransactionIds(match, impl);
     }
   }
 }

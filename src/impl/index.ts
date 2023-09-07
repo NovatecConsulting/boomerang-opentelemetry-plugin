@@ -104,7 +104,11 @@ export default class OpenTelemetryTracingImpl {
 
   private customSpanProcessor = new CustomSpanProcessor();
   private customIdGenerator = new CustomIdGenerator(this);
+
+  // Store trace-id, before transactionSpan was created
   private transactionTraceId: string;
+  // Store span-id, before transactionSpan was created
+  private transactionSpanId: string;
   private transactionSpan: Span;
   private readonly OpenTelemetryVersion = "0.25.0";
 
@@ -211,6 +215,15 @@ export default class OpenTelemetryTracingImpl {
       this.transactionTraceId = traceId;
   }
 
+  public getTransactionSpanId = () => {
+    return this.transactionSpanId;
+  }
+
+  public setTransactionSpanId = (spanId: string) => {
+    if(this.isTransactionRecordingEnabled())
+      this.transactionSpanId = spanId;
+  }
+
   public getTransactionSpan = () => {
     return this.transactionSpan;
   }
@@ -239,10 +252,13 @@ export default class OpenTelemetryTracingImpl {
     if(currentTransactionSpan) this.transactionSpan.end();
     // Delete current transaction span, after closing it
     this.setTransactionSpan(null);
-    // Delete current transaction trace ID, so the IdGenerator cannot use it
+
+    // Delete current transaction IDs, so the IdGenerator cannot use it
     this.setTransactionTraceId(null);
+    this.setTransactionSpanId(null);
     const newTraceId = this.customIdGenerator.generateTraceId();
     this.setTransactionTraceId(newTraceId);
+
 
     // Just use any existing tracer, for example document-load
     const documentLoadTracerName = "@opentelemetry/instrumentation-document-load";
