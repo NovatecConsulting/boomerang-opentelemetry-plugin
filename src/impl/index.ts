@@ -33,6 +33,7 @@ import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
 import { MultiSpanProcessor, CustomSpanProcessor } from './spanProcessing';
 import { DocumentLoadServerTimingInstrumentation, patchTracer } from './documentLoadInstrumentation';
 import { CustomIdGenerator } from './transactionIdGeneration';
+import { TransactionSpanManager } from './transactionSpanManager';
 
 /**
  * TODOs:
@@ -103,14 +104,7 @@ export default class OpenTelemetryTracingImpl {
   private traceProvider: WebTracerProvider;
 
   private customSpanProcessor = new CustomSpanProcessor();
-  private customIdGenerator = new CustomIdGenerator(this);
-
-  // Store trace-id, before transactionSpan was created
-  private transactionTraceId: string;
-  // Store span-id, before transactionSpan was created
-  private transactionSpanId: string;
-  private transactionSpan: Span;
-  private readonly OpenTelemetryVersion = "0.25.0";
+  private customIdGenerator = new CustomIdGenerator();
 
   public register = () => {
     // return if already initialized
@@ -120,10 +114,6 @@ export default class OpenTelemetryTracingImpl {
 
     // instrument the tracer class for injecting default attributes
     this.instrumentTracerClass();
-
-    // If recordTransaction is enabled, patch the Tracer to use the transaction span as root span
-    if(this.isTransactionRecordingEnabled())
-      patchTracer(this);
 
     // the configuration used by the tracer
     const tracerConfiguration: WebTracerConfig = {
@@ -186,6 +176,21 @@ export default class OpenTelemetryTracingImpl {
     // store the webtracer
     this.traceProvider = providerWithZone;
 
+    // If recordTransaction is enabled, patch the Tracer to always use the transaction span as root span
+    // and initialize the transaction data storage
+    if(this.isTransactionRecordingEnabled()) {
+      patchTracer();
+      const delay = this.props.plugins_config?.instrument_document_load?.exporterDelay;
+      TransactionSpanManager.initialize(true, this.customIdGenerator);
+
+      window.addEventListener("beforeunload", (event) => {
+        TransactionSpanManager.getTransactionSpan().end();
+        this.traceProvider.forceFlush();
+        //Synchronous blocking is necessary, so the span can be exported successfully
+        this.sleep(delay);
+      });
+    }
+
     // mark plugin initalized
     this.initialized = true;
   };
@@ -206,82 +211,24 @@ export default class OpenTelemetryTracingImpl {
     this.customSpanProcessor.addCustomAttribute(key,value);
   }
 
-  public getTransactionTraceId = () => {
-    return this.transactionTraceId;
-  }
-
-  public setTransactionTraceId = (traceId: string) => {
-    if(this.isTransactionRecordingEnabled())
-      this.transactionTraceId = traceId;
-  }
-
-  public getTransactionSpanId = () => {
-    return this.transactionSpanId;
-  }
-
-  public setTransactionSpanId = (spanId: string) => {
-    if(this.isTransactionRecordingEnabled())
-      this.transactionSpanId = spanId;
-  }
-
-  public getTransactionSpan = () => {
-    return this.transactionSpan;
-  }
-
-  public setTransactionSpan = (span: Span) => {
-    if(this.isTransactionRecordingEnabled()) {
-      this.transactionSpan = span;
-
-      window.addEventListener("beforeunload", (event) => {
-        this.transactionSpan.end();
-        this.traceProvider.forceFlush();
-        //Synchronous blocking is necessary, so the span can be exported successfully
-        this.sleep();
-      });
-    }
-  }
-
   public startNewTransaction = (spanName: string) => {
-    // Check if transactions should be recorded, otherwise don't start transaction
-    if(!this.isTransactionRecordingEnabled()) {
-        console.warn("No Transaction started: Transaction recording is disabled");
-        return;
-    }
-
-    const currentTransactionSpan = this.getTransactionSpan();
-    if(currentTransactionSpan) this.transactionSpan.end();
-    // Delete current transaction span, after closing it
-    this.setTransactionSpan(null);
-
-    // Delete current transaction IDs, so the IdGenerator cannot use it
-    this.setTransactionTraceId(null);
-    this.setTransactionSpanId(null);
-    const newTraceId = this.customIdGenerator.generateTraceId();
-    this.setTransactionTraceId(newTraceId);
-
-
-    // Just use any existing tracer, for example document-load
-    const documentLoadTracerName = "@opentelemetry/instrumentation-document-load";
-    const tracer = this.getTracer(documentLoadTracerName, this.OpenTelemetryVersion);
-    const newTransactionSpan = tracer.startSpan(spanName, {root: true});
-    this.setTransactionSpan(newTransactionSpan);
+    TransactionSpanManager.startNewTransaction(spanName);
   }
 
   public setBeaconUrl = (url: string) => {
     this.beaconUrl = url;
   };
 
-  private sleep = () => {
-    const { plugins_config } = this.props;
-    let delay = plugins_config?.instrument_document_load?.exporterDelay;
+  private isTransactionRecordingEnabled = (): boolean => {
+    return this.props.plugins_config?.instrument_document_load?.recordTransaction;
+  }
+
+  private sleep = (delay: number) => {
+    //Use 20 ms as default
     if(!delay) delay = 20;
 
     const start = new Date().getTime();
     while (new Date().getTime() < start + delay);
-  }
-
-  private isTransactionRecordingEnabled = ():boolean => {
-    return this.props.plugins_config?.instrument_document_load?.recordTransaction;
   }
 
   /**
@@ -361,7 +308,7 @@ export default class OpenTelemetryTracingImpl {
     // Instrumentation for the document on load (initial request)
     if (plugins_config?.instrument_document_load?.enabled !== false) {
       if(this.isTransactionRecordingEnabled())
-        instrumentations.push(new DocumentLoadServerTimingInstrumentation(plugins_config.instrument_document_load, this));
+        instrumentations.push(new DocumentLoadServerTimingInstrumentation(plugins_config.instrument_document_load));
       else
         instrumentations.push(new DocumentLoadInstrumentation(plugins_config.instrument_document_load));
     }

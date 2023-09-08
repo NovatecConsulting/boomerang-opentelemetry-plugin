@@ -5,10 +5,10 @@ import * as api from '@opentelemetry/api';
 import { captureTraceParentFromPerformanceEntries } from './servertiming';
 import { PerformanceEntries } from '@opentelemetry/sdk-trace-web';
 import { Span, Tracer } from '@opentelemetry/sdk-trace-base';
-import OpenTelemetryTracingImpl from './index'
 
 import { isTracingSuppressed } from '@opentelemetry/core/build/src/trace/suppress-tracing'
 import { sanitizeAttributes } from '@opentelemetry/core/build/src/common/attributes';
+import { TransactionSpanManager } from './transactionSpanManager';
 
 export interface DocumentLoadServerTimingInstrumentationConfig extends InstrumentationConfig {
   recordTransaction: boolean;
@@ -18,7 +18,7 @@ export interface DocumentLoadServerTimingInstrumentationConfig extends Instrumen
 /**
  * Patch the Tracer class to use the transaction span as root span
  */
-export function patchTracer(impl: OpenTelemetryTracingImpl) {
+export function patchTracer() {
   // Overwrite startSpan in Tracer class
   // Copy of the original startSpan()-function with additional logic inside the function to determine the parentContext
   Tracer.prototype.startSpan = function (
@@ -37,13 +37,13 @@ export function patchTracer(impl: OpenTelemetryTracingImpl) {
     else parentContext = api.trace.getSpanContext(context);
 
     if(!parentContext) {
-      const transactionSpan = impl.getTransactionSpan();
+      const transactionSpan = TransactionSpanManager.getTransactionSpan();
       if(transactionSpan)
         parentContext = transactionSpan.spanContext();
     }
 
     // Use provided transaction span-ID for documentLoadSpan
-    const spanId = name == "documentLoad" ? impl.getTransactionSpanId() : this._idGenerator.generateSpanId();
+    const spanId = name == "documentLoad" ? TransactionSpanManager.getTransactionSpanId() : this._idGenerator.generateSpanId();
     let traceId;
     let traceState;
     let parentSpanId;
@@ -108,7 +108,7 @@ export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrum
   readonly component: string = 'document-load-server-timing';
   moduleName = this.component;
 
-  constructor(config: DocumentLoadServerTimingInstrumentationConfig, impl: OpenTelemetryTracingImpl) {
+  constructor(config: DocumentLoadServerTimingInstrumentationConfig) {
     super(config);
     const exposedSuper = this as any as ExposedDocumentLoadSuper;
     const _superStartSpan: ExposedDocumentLoadSuper['_startSpan'] = exposedSuper._startSpan.bind(this);
@@ -124,17 +124,17 @@ export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrum
         }
       }
 
-      captureTraceParentFromPerformanceEntries(entries, impl);
+      captureTraceParentFromPerformanceEntries(entries);
       const span = _superStartSpan(spanName, performanceName, entries, parentSpan);
       const exposedSpan = span as any as Span;
-      if(exposedSpan.name == "documentLoad") impl.setTransactionSpan(span);
+      if(exposedSpan.name == "documentLoad") TransactionSpanManager.setTransactionSpan(span);
 
       return span;
     }
 
     exposedSuper._endSpan = (span, performanceName, entries) => {
 
-      const transactionSpan = impl.getTransactionSpan();
+      const transactionSpan = TransactionSpanManager.getTransactionSpan();
       // Don't close transactionSpan
       // transactionSpan will be closed through "beforeunload"-event
       if(transactionSpan && transactionSpan == span) return;

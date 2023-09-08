@@ -1,5 +1,5 @@
 import { IdGenerator } from '@opentelemetry/core';
-import OpenTelemetryTracingImpl from './index'
+import { TransactionSpanManager } from './transactionSpanManager';
 
 const SPAN_ID_BYTES = 8;
 const TRACE_ID_BYTES = 16;
@@ -7,12 +7,6 @@ const SHARED_BUFFER = Buffer.allocUnsafe(TRACE_ID_BYTES);
 
 // Copy of RandomIdGenerator (@opentelemetry/core) with additional getTransactionTraceId()-function
 export class CustomIdGenerator implements IdGenerator {
-
-  private impl: OpenTelemetryTracingImpl;
-
-  constructor(impl: OpenTelemetryTracingImpl) {
-    this.impl = impl;
-  }
 
   /**
    * Returns a random 16-byte trace ID formatted/encoded as a 32 lowercase hex
@@ -31,11 +25,11 @@ export class CustomIdGenerator implements IdGenerator {
   }
 
   /**
-   * If the OpenTelemetryTracingImpl contains a transaction-trace-id, use it
+   * If there is a transaction-trace-id, use it
    * Otherwise, generate a new trace-id the ordinary way
    */
   getTransactionTraceId(): () => string {
-    const transactionTraceId = this.impl.getTransactionTraceId();
+    const transactionTraceId = TransactionSpanManager.getTransactionTraceId();
     // Use current transaction trace ID, if existing
     if(transactionTraceId) return () => transactionTraceId;
     else return this.getIdGenerator(TRACE_ID_BYTES);
