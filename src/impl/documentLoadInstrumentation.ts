@@ -42,8 +42,13 @@ export function patchTracer() {
         parentContext = transactionSpan.spanContext();
     }
 
-    // Use provided transaction span-ID for documentLoadSpan
-    const spanId = name == "documentLoad" ? TransactionSpanManager.getTransactionSpanId() : this._idGenerator.generateSpanId();
+    // Use transaction span-ID for documentLoadSpan, if existing
+    let spanId = this._idGenerator.generateSpanId();
+    if(name == "documentLoad") {
+      const transactionSpanId = TransactionSpanManager.getTransactionSpanId();
+      if(transactionSpanId) spanId = transactionSpanId;
+    }
+
     let traceId;
     let traceState;
     let parentSpanId;
