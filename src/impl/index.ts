@@ -34,6 +34,7 @@ import { MultiSpanProcessor, CustomSpanProcessor } from './spanProcessing';
 import { DocumentLoadServerTimingInstrumentation, patchTracer } from './instrumentation/documentLoadInstrumentation';
 import { CustomIdGenerator } from './transaction/transactionIdGeneration';
 import { TransactionSpanManager } from './transaction/transactionSpanManager';
+import { CustomXMLHttpRequestInstrumentation } from './instrumentation/xmlHttpRequestInstrumentation';
 
 /**
  * TODOs:
@@ -326,10 +327,10 @@ export default class OpenTelemetryTracingImpl {
 
     // XMLHttpRequest Instrumentation for web plugin
     if (plugins_config?.instrument_xhr?.enabled !== false) {
-      instrumentations.push(new XMLHttpRequestInstrumentation(plugins_config.instrument_xhr));
+      instrumentations.push(new CustomXMLHttpRequestInstrumentation(plugins_config.instrument_xhr));
     } else if (plugins?.instrument_xhr !== false) {
       instrumentations.push(
-        new XMLHttpRequestInstrumentation({
+        new CustomXMLHttpRequestInstrumentation({
           propagateTraceHeaderCorsUrls: corsUrls
         })
       );
