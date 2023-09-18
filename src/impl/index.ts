@@ -31,6 +31,9 @@ import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-u
 import { PluginProperties, ContextFunction, PropagationHeader } from '../types';
 import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
 import { MultiSpanProcessor, CustomSpanProcessor } from './spanProcessing';
+import { DocumentLoadServerTimingInstrumentation, patchTracer } from './documentLoadInstrumentation';
+import { CustomIdGenerator } from './transactionIdGeneration';
+import { TransactionSpanManager } from './transactionSpanManager';
 
 /**
  * TODOs:
@@ -69,6 +72,8 @@ export default class OpenTelemetryTracingImpl {
       instrument_document_load: {
         enabled: false,
         path: "",
+        recordTransaction: false,
+        exporterDelay: 20
       },
       instrument_user_interaction: {
         enabled: false,
@@ -99,6 +104,7 @@ export default class OpenTelemetryTracingImpl {
   private traceProvider: WebTracerProvider;
 
   private customSpanProcessor = new CustomSpanProcessor();
+  private customIdGenerator = new CustomIdGenerator();
 
   public register = () => {
     // return if already initialized
@@ -112,6 +118,7 @@ export default class OpenTelemetryTracingImpl {
     // the configuration used by the tracer
     const tracerConfiguration: WebTracerConfig = {
       sampler: this.resolveSampler(),
+      idGenerator: this.customIdGenerator
     };
 
     // create provider
@@ -169,6 +176,21 @@ export default class OpenTelemetryTracingImpl {
     // store the webtracer
     this.traceProvider = providerWithZone;
 
+    // If recordTransaction is enabled, patch the Tracer to always use the transaction span as root span
+    // and initialize the transaction data storage
+    if(this.isTransactionRecordingEnabled()) {
+      patchTracer();
+      const delay = this.props.plugins_config?.instrument_document_load?.exporterDelay;
+      TransactionSpanManager.initialize(true, this.customIdGenerator);
+
+      window.addEventListener("beforeunload", (event) => {
+        TransactionSpanManager.getTransactionSpan().end();
+        this.traceProvider.forceFlush();
+        //Synchronous blocking is necessary, so the span can be exported successfully
+        this.sleep(delay);
+      });
+    }
+
     // mark plugin initalized
     this.initialized = true;
   };
@@ -189,9 +211,25 @@ export default class OpenTelemetryTracingImpl {
     this.customSpanProcessor.addCustomAttribute(key,value);
   }
 
+  public startNewTransaction = (spanName: string) => {
+    TransactionSpanManager.startNewTransaction(spanName);
+  }
+
   public setBeaconUrl = (url: string) => {
     this.beaconUrl = url;
   };
+
+  private isTransactionRecordingEnabled = (): boolean => {
+    return this.props.plugins_config?.instrument_document_load?.recordTransaction;
+  }
+
+  private sleep = (delay: number) => {
+    //Use 20 ms as default
+    if(!delay) delay = 20;
+
+    const start = new Date().getTime();
+    while (new Date().getTime() < start + delay);
+  }
 
   /**
    * @returns Returns the configured context propagator for injecting the trace context into HTTP request headers.
@@ -267,6 +305,25 @@ export default class OpenTelemetryTracingImpl {
     const { plugins, corsUrls, plugins_config } = this.props;
     const instrumentations: any = [];
 
+    // Instrumentation for the document on load (initial request)
+    if (plugins_config?.instrument_document_load?.enabled !== false) {
+      if(this.isTransactionRecordingEnabled())
+        instrumentations.push(new DocumentLoadServerTimingInstrumentation(plugins_config.instrument_document_load));
+      else
+        instrumentations.push(new DocumentLoadInstrumentation(plugins_config.instrument_document_load));
+    }
+    else if (plugins?.instrument_document_load !== false) {
+      instrumentations.push(new DocumentLoadInstrumentation());
+    }
+
+    // Instrumentation for user interactions
+    if (plugins_config?.instrument_user_interaction?.enabled !== false) {
+      instrumentations.push(new UserInteractionInstrumentation(plugins_config.instrument_user_interaction));
+    }
+    else if (plugins?.instrument_user_interaction !== false) {
+      instrumentations.push(new UserInteractionInstrumentation());
+    }
+
     // XMLHttpRequest Instrumentation for web plugin
     if (plugins_config?.instrument_xhr?.enabled !== false) {
       instrumentations.push(new XMLHttpRequestInstrumentation(plugins_config.instrument_xhr));
@@ -285,22 +342,6 @@ export default class OpenTelemetryTracingImpl {
     }
     else if (isFetchAPISupported && plugins?.instrument_fetch !== false) {
       instrumentations.push(new FetchInstrumentation());
-    }
-
-    // Instrumentation for the document on load (initial request)
-    if (plugins_config?.instrument_document_load?.enabled !== false) {
-      instrumentations.push(new DocumentLoadInstrumentation(plugins_config.instrument_document_load));
-    }
-    else if (plugins?.instrument_document_load !== false) {
-      instrumentations.push(new DocumentLoadInstrumentation());
-    }
-
-    // Instrumentation for user interactions
-    if (plugins_config?.instrument_user_interaction?.enabled !== false) {
-      instrumentations.push(new UserInteractionInstrumentation(plugins_config.instrument_user_interaction));
-    }
-    else if (plugins?.instrument_user_interaction !== false) {
-      instrumentations.push(new UserInteractionInstrumentation());
     }
 
     return instrumentations;
