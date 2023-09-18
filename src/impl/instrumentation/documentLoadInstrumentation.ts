@@ -2,13 +2,12 @@
 import { InstrumentationConfig } from '@opentelemetry/instrumentation';
 import { DocumentLoadInstrumentation } from '@opentelemetry/instrumentation-document-load';
 import * as api from '@opentelemetry/api';
-import { captureTraceParentFromPerformanceEntries } from './servertiming';
+import { captureTraceParentFromPerformanceEntries } from '../transaction/servertiming';
 import { PerformanceEntries } from '@opentelemetry/sdk-trace-web';
 import { Span, Tracer } from '@opentelemetry/sdk-trace-base';
-
 import { isTracingSuppressed } from '@opentelemetry/core/build/src/trace/suppress-tracing'
 import { sanitizeAttributes } from '@opentelemetry/core/build/src/common/attributes';
-import { TransactionSpanManager } from './transactionSpanManager';
+import { TransactionSpanManager } from '../transaction/transactionSpanManager';
 
 export interface DocumentLoadServerTimingInstrumentationConfig extends InstrumentationConfig {
   recordTransaction: boolean;

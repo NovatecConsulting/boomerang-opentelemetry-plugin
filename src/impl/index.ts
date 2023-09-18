@@ -31,9 +31,9 @@ import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-u
 import { PluginProperties, ContextFunction, PropagationHeader } from '../types';
 import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
 import { MultiSpanProcessor, CustomSpanProcessor } from './spanProcessing';
-import { DocumentLoadServerTimingInstrumentation, patchTracer } from './documentLoadInstrumentation';
-import { CustomIdGenerator } from './transactionIdGeneration';
-import { TransactionSpanManager } from './transactionSpanManager';
+import { DocumentLoadServerTimingInstrumentation, patchTracer } from './instrumentation/documentLoadInstrumentation';
+import { CustomIdGenerator } from './transaction/transactionIdGeneration';
+import { TransactionSpanManager } from './transaction/transactionSpanManager';
 
 /**
  * TODOs:
