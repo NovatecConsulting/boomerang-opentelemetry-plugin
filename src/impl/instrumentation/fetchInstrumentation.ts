@@ -12,13 +12,13 @@ type ExposedFetchSuper = {
 
 export class CustomFetchInstrumentation extends FetchInstrumentation {
 
-  private readonly excludeKeys: string[] = [];
+  private excludeUrlKeys: string[] = [];
 
   constructor(config: CustomFetchInstrumentationConfig = {}) {
     super(config);
 
     if(config.excludeParameterKeys)
-      this.excludeKeys = config.excludeParameterKeys;
+      this.excludeUrlKeys = config.excludeParameterKeys;
 
     //Store original function in variable
     const exposedSuper = this as any as ExposedFetchSuper;
@@ -27,7 +27,7 @@ export class CustomFetchInstrumentation extends FetchInstrumentation {
     //Override function
     exposedSuper._createSpan = (url, options = {}) => {
       const span = _superStartSpan(url, options);
-      addUrlParams(span, url, this.excludeKeys);
+      addUrlParams(span, url, this.excludeUrlKeys);
 
       return span;
     }

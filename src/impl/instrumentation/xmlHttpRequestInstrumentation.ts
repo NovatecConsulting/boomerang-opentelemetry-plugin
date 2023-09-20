@@ -15,13 +15,13 @@ type ExposedXHRSuper = {
 
 export class CustomXMLHttpRequestInstrumentation extends XMLHttpRequestInstrumentation {
 
-  private readonly excludeKeys: string[] = [];
+  private excludeUrlKeys: string[] = [];
 
   constructor(config: CustomXMLHttpRequestInstrumentationConfig = {}) {
     super(config);
 
     if(config.excludeParameterKeys)
-      this.excludeKeys = config.excludeParameterKeys;
+      this.excludeUrlKeys = config.excludeParameterKeys;
 
     //Store original function in variable
     const exposedSuper = this as any as ExposedXHRSuper;
@@ -30,7 +30,7 @@ export class CustomXMLHttpRequestInstrumentation extends XMLHttpRequestInstrumen
     //Override function
     exposedSuper._createSpan = (xhr, url, method) => {
       const span = _superStartSpan(xhr, url, method);
-      addUrlParams(span, url, this.excludeKeys);
+      addUrlParams(span, url, this.excludeUrlKeys);
 
       return span;
     }

@@ -11,12 +11,14 @@ import { TransactionSpanManager } from '../transaction/transactionSpanManager';
 import { addUrlParams } from './urlParams';
 
 export interface CustomDocumentLoadInstrumentationConfig extends InstrumentationConfig {
-  recordTransaction: boolean;
-  exporterDelay: number;
+  recordTransaction?: boolean;
+  exporterDelay?: number;
+  excludeParameterKeys?: string[];
 }
 
 /**
  * Patch the Tracer class to use the transaction span as root span
+ * OpenTelemetry version: 0.25.0
  */
 export function patchTracer() {
   // Overwrite startSpan() in Tracer class
@@ -121,48 +123,71 @@ type ExposedDocumentLoadSuper = {
   _endSpan(span: api.Span | undefined, performanceName: string, entries: PerformanceEntries): void;
 }
 
-export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrumentation {
+export class CustomDocumentLoadInstrumentation extends DocumentLoadInstrumentation {
   readonly component: string = 'document-load-server-timing';
   moduleName = this.component;
 
+  // Per default transaction should not be recorded
+  private recordTransaction = false;
+
+  private excludeUrlKeys: string[] = [];
+
   constructor(config: CustomDocumentLoadInstrumentationConfig) {
     super(config);
+
+    if(config.excludeParameterKeys)
+      this.excludeUrlKeys = config.excludeParameterKeys;
+
+    if(config.recordTransaction)
+      this.recordTransaction = config.recordTransaction;
 
     //Store original functions in variables
     const exposedSuper = this as any as ExposedDocumentLoadSuper;
     const _superStartSpan: ExposedDocumentLoadSuper['_startSpan'] = exposedSuper._startSpan.bind(this);
     const _superEndSpan: ExposedDocumentLoadSuper['_endSpan'] = exposedSuper._endSpan.bind(this);
 
-    //Override function
-    exposedSuper._startSpan = (spanName, performanceName, entries, parentSpan) => {
-      if (!(entries as PerformanceEntriesWithServerTiming).serverTiming && performance.getEntriesByType) {
-        const navEntries = performance.getEntriesByType('navigation');
-        // @ts-ignore
-        if (navEntries[0]?.serverTiming) {
+    if(this.recordTransaction) {
+      //Override function
+      exposedSuper._startSpan = (spanName, performanceName, entries, parentSpan) => {
+        if (!(entries as PerformanceEntriesWithServerTiming).serverTiming && performance.getEntriesByType) {
+          const navEntries = performance.getEntriesByType('navigation');
           // @ts-ignore
-          (entries as PerformanceEntriesWithServerTiming).serverTiming = navEntries[0].serverTiming;
+          if (navEntries[0]?.serverTiming) {
+            // @ts-ignore
+            (entries as PerformanceEntriesWithServerTiming).serverTiming = navEntries[0].serverTiming;
+          }
         }
+        captureTraceParentFromPerformanceEntries(entries);
+
+        const span = _superStartSpan(spanName, performanceName, entries, parentSpan);
+        const exposedSpan = span as any as Span;
+        if(exposedSpan.name == "documentLoad") TransactionSpanManager.setTransactionSpan(span);
+
+        addUrlParams(span, location.href, this.excludeUrlKeys);
+
+        return span;
       }
-      captureTraceParentFromPerformanceEntries(entries);
 
-      const span = _superStartSpan(spanName, performanceName, entries, parentSpan);
-      const exposedSpan = span as any as Span;
-      if(exposedSpan.name == "documentLoad") TransactionSpanManager.setTransactionSpan(span);
+      //Override function
+      exposedSuper._endSpan = (span, performanceName, entries) => {
 
-      addUrlParams(span, location.href, []);
+        const transactionSpan = TransactionSpanManager.getTransactionSpan();
+        // Don't close transactionSpan
+        // transactionSpan will be closed through "beforeunload"-event
+        if(transactionSpan && transactionSpan == span) return;
 
-      return span;
+        return _superEndSpan(span, performanceName, entries);
+      };
     }
+    else {
+      //Override function
+      exposedSuper._startSpan = (spanName, performanceName, entries, parentSpan) => {
+        const span = _superStartSpan(spanName, performanceName, entries, parentSpan);
+        const exposedSpan = span as any as Span;
+        if(exposedSpan.name == "documentLoad") addUrlParams(span, location.href, this.excludeUrlKeys);
 
-    //Override function
-    exposedSuper._endSpan = (span, performanceName, entries) => {
-
-      const transactionSpan = TransactionSpanManager.getTransactionSpan();
-      // Don't close transactionSpan
-      // transactionSpan will be closed through "beforeunload"-event
-      if(transactionSpan && transactionSpan == span) return;
-
-      return _superEndSpan(span, performanceName, entries);
-    };
+        return span;
+      }
+    }
   }
 }

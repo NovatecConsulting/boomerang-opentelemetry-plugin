@@ -24,14 +24,12 @@ import {
 import { Resource } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { B3InjectEncoding, B3Propagator } from '@opentelemetry/propagator-b3';
-import { XMLHttpRequestInstrumentation } from '@opentelemetry/instrumentation-xml-http-request';
-import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
 import { DocumentLoadInstrumentation } from '@opentelemetry/instrumentation-document-load';
 import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-user-interaction';
 import { PluginProperties, ContextFunction, PropagationHeader } from '../types';
 import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
 import { MultiSpanProcessor, CustomSpanProcessor } from './spanProcessing';
-import { DocumentLoadServerTimingInstrumentation, patchTracer } from './instrumentation/documentLoadInstrumentation';
+import { CustomDocumentLoadInstrumentation, patchTracer } from './instrumentation/documentLoadInstrumentation';
 import { CustomIdGenerator } from './transaction/transactionIdGeneration';
 import { TransactionSpanManager } from './transaction/transactionSpanManager';
 import { CustomXMLHttpRequestInstrumentation } from './instrumentation/xmlHttpRequestInstrumentation';
@@ -77,7 +75,8 @@ export default class OpenTelemetryTracingImpl {
         enabled: false,
         path: "",
         recordTransaction: false,
-        exporterDelay: 20
+        exporterDelay: 20,
+        excludeParameterKeys: []
       },
       instrument_user_interaction: {
         enabled: false,
@@ -311,10 +310,7 @@ export default class OpenTelemetryTracingImpl {
 
     // Instrumentation for the document on load (initial request)
     if (plugins_config?.instrument_document_load?.enabled !== false) {
-      if(this.isTransactionRecordingEnabled())
-        instrumentations.push(new DocumentLoadServerTimingInstrumentation(plugins_config.instrument_document_load));
-      else
-        instrumentations.push(new DocumentLoadInstrumentation(plugins_config.instrument_document_load));
+        instrumentations.push(new CustomDocumentLoadInstrumentation(plugins_config.instrument_document_load));
     }
     else if (plugins?.instrument_document_load !== false) {
       instrumentations.push(new DocumentLoadInstrumentation());
