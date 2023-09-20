@@ -8,6 +8,8 @@ import { Span, Tracer } from '@opentelemetry/sdk-trace-base';
 import { isTracingSuppressed } from '@opentelemetry/core/build/src/trace/suppress-tracing'
 import { sanitizeAttributes } from '@opentelemetry/core/build/src/common/attributes';
 import { TransactionSpanManager } from '../transaction/transactionSpanManager';
+import { SemanticAttributes } from '@opentelemetry/semantic-conventions';
+import { addUrlParams } from './urlParams';
 
 export interface DocumentLoadServerTimingInstrumentationConfig extends InstrumentationConfig {
   recordTransaction: boolean;
@@ -31,6 +33,12 @@ export function patchTracer() {
       return api.trace.wrapSpanContext(api.INVALID_SPAN_CONTEXT);
     }
 
+    /*
+      #######################################
+              OVERWRITTEN LOGIC START
+      #######################################
+     */
+
     let parentContext; //getParent(options, context);
     if(options.root) parentContext = undefined;
     else parentContext = api.trace.getSpanContext(context);
@@ -47,6 +55,12 @@ export function patchTracer() {
       const transactionSpanId = TransactionSpanManager.getTransactionSpanId();
       if(transactionSpanId) spanId = transactionSpanId;
     }
+
+    /*
+      #######################################
+              OVERWRITTEN LOGIC END
+      #######################################
+     */
 
     let traceId;
     let traceState;
@@ -133,6 +147,8 @@ export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrum
       const exposedSpan = span as any as Span;
       if(exposedSpan.name == "documentLoad") TransactionSpanManager.setTransactionSpan(span);
 
+      addUrlParams(span, location.href, []);
+
       return span;
     }
 
@@ -146,4 +162,5 @@ export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrum
       return _superEndSpan(span, performanceName, entries);
     };
   }
+
 }

@@ -1,11 +1,14 @@
-import { InstrumentationConfig } from '@opentelemetry/instrumentation';
 import * as api from '@opentelemetry/api';
 import {
   XMLHttpRequestInstrumentation,
   XMLHttpRequestInstrumentationConfig
 } from '@opentelemetry/instrumentation-xml-http-request';
 import { Span } from '@opentelemetry/api';
+import { addUrlParams } from './urlParams';
 
+export interface CustomXMLHttpRequestInstrumentationConfig extends XMLHttpRequestInstrumentationConfig {
+  excludeParameterKeys?: string[];
+}
 
 type ExposedXHRSuper = {
   _createSpan(xhr: XMLHttpRequest, url: string, method: string): api.Span | undefined;
@@ -13,8 +16,11 @@ type ExposedXHRSuper = {
 
 export class CustomXMLHttpRequestInstrumentation extends XMLHttpRequestInstrumentation {
 
-  constructor(config: XMLHttpRequestInstrumentationConfig & InstrumentationConfig = {}) {
+  private readonly excludeKeys: string[] = [];
+
+  constructor(config: CustomXMLHttpRequestInstrumentationConfig = {}) {
     super(config);
+    this.excludeKeys = config.excludeParameterKeys;
 
     const exposedSuper = this as any as ExposedXHRSuper;
     const _superStartSpan: ExposedXHRSuper['_createSpan'] = exposedSuper._createSpan.bind(this);
@@ -22,21 +28,9 @@ export class CustomXMLHttpRequestInstrumentation extends XMLHttpRequestInstrumen
     exposedSuper._createSpan = (xhr, url, method) => {
       const span = _superStartSpan(xhr, url, method);
 
-      this.addUrlParamsToSpan(span, url);
+      addUrlParams(span, url, this.excludeKeys);
 
       return span;
-    }
-  }
-
-  private addUrlParamsToSpan(span: Span, url: string){
-    const urlParams = url.split("?")[1];
-
-    if(urlParams) {
-      const keyValuePairs = urlParams.split("&");
-      for(const keyValue of keyValuePairs) {
-        const [key, value] = keyValue.split("=");
-        span.setAttribute(key, value);
-      }
     }
   }
 }

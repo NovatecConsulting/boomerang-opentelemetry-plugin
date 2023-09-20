@@ -35,6 +35,7 @@ import { DocumentLoadServerTimingInstrumentation, patchTracer } from './instrume
 import { CustomIdGenerator } from './transaction/transactionIdGeneration';
 import { TransactionSpanManager } from './transaction/transactionSpanManager';
 import { CustomXMLHttpRequestInstrumentation } from './instrumentation/xmlHttpRequestInstrumentation';
+import { CustomFetchInstrumentation } from './instrumentation/fetchInstrumentation';
 
 /**
  * TODOs:
@@ -60,7 +61,8 @@ export default class OpenTelemetryTracingImpl {
         path: "",
         applyCustomAttributesOnSpan: null, //(span: Span, request: Request) => { },
         ignoreUrls: [],
-        propagateTraceHeaderCorsUrls: []
+        propagateTraceHeaderCorsUrls: [],
+        excludeParameterKeys: []
       },
       instrument_xhr: {
         enabled: false,
@@ -69,6 +71,7 @@ export default class OpenTelemetryTracingImpl {
         propagateTraceHeaderCorsUrls: [],
         ignoreUrls: [],
         clearTimingResources: false,
+        excludeParameterKeys: []
       },
       instrument_document_load: {
         enabled: false,
@@ -339,10 +342,10 @@ export default class OpenTelemetryTracingImpl {
     // Instrumentation for the fetch API if available
     const isFetchAPISupported = 'fetch' in window;
     if (isFetchAPISupported && plugins_config?.instrument_fetch?.enabled !== false) {
-      instrumentations.push(new FetchInstrumentation(plugins_config.instrument_fetch));
+      instrumentations.push(new CustomFetchInstrumentation(plugins_config.instrument_fetch));
     }
     else if (isFetchAPISupported && plugins?.instrument_fetch !== false) {
-      instrumentations.push(new FetchInstrumentation());
+      instrumentations.push(new CustomFetchInstrumentation());
     }
 
     return instrumentations;
