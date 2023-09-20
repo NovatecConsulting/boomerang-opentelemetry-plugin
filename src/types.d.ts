@@ -1,6 +1,6 @@
 import { PropagateTraceHeaderCorsUrls } from '@opentelemetry/sdk-trace-web';
 import { CollectorExporterNodeConfigBase } from '@opentelemetry/exporter-collector';
-import { DocumentLoadServerTimingInstrumentationConfig } from './impl/instrumentation/documentLoadInstrumentation';
+import { CustomDocumentLoadInstrumentationConfig } from './impl/instrumentation/documentLoadInstrumentation';
 import { InstrumentationConfig } from "@opentelemetry/instrumentation";
 import { CustomXMLHttpRequestInstrumentationConfig } from './impl/instrumentation/xmlHttpRequestInstrumentation';
 import { CustomFetchInstrumentationConfig } from './impl/instrumentation/fetchInstrumentation';
@@ -39,7 +39,7 @@ export interface OTPluginProperties {
 export interface OTPluginConfig {
   instrument_fetch: CustomFetchInstrumentationConfig;
   instrument_xhr: CustomXMLHttpRequestInstrumentationConfig;
-  instrument_document_load: DocumentLoadServerTimingInstrumentationConfig;
+  instrument_document_load: CustomDocumentLoadInstrumentationConfig;
   instrument_user_interaction: InstrumentationConfig;
 }
 

@@ -8,10 +8,9 @@ import { Span, Tracer } from '@opentelemetry/sdk-trace-base';
 import { isTracingSuppressed } from '@opentelemetry/core/build/src/trace/suppress-tracing'
 import { sanitizeAttributes } from '@opentelemetry/core/build/src/common/attributes';
 import { TransactionSpanManager } from '../transaction/transactionSpanManager';
-import { SemanticAttributes } from '@opentelemetry/semantic-conventions';
 import { addUrlParams } from './urlParams';
 
-export interface DocumentLoadServerTimingInstrumentationConfig extends InstrumentationConfig {
+export interface CustomDocumentLoadInstrumentationConfig extends InstrumentationConfig {
   recordTransaction: boolean;
   exporterDelay: number;
 }
@@ -20,7 +19,7 @@ export interface DocumentLoadServerTimingInstrumentationConfig extends Instrumen
  * Patch the Tracer class to use the transaction span as root span
  */
 export function patchTracer() {
-  // Overwrite startSpan in Tracer class
+  // Overwrite startSpan() in Tracer class
   // Copy of the original startSpan()-function with additional logic inside the function to determine the parentContext
   Tracer.prototype.startSpan = function (
     name: string,
@@ -126,12 +125,15 @@ export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrum
   readonly component: string = 'document-load-server-timing';
   moduleName = this.component;
 
-  constructor(config: DocumentLoadServerTimingInstrumentationConfig) {
+  constructor(config: CustomDocumentLoadInstrumentationConfig) {
     super(config);
+
+    //Store original functions in variables
     const exposedSuper = this as any as ExposedDocumentLoadSuper;
     const _superStartSpan: ExposedDocumentLoadSuper['_startSpan'] = exposedSuper._startSpan.bind(this);
     const _superEndSpan: ExposedDocumentLoadSuper['_endSpan'] = exposedSuper._endSpan.bind(this);
 
+    //Override function
     exposedSuper._startSpan = (spanName, performanceName, entries, parentSpan) => {
       if (!(entries as PerformanceEntriesWithServerTiming).serverTiming && performance.getEntriesByType) {
         const navEntries = performance.getEntriesByType('navigation');
@@ -141,8 +143,8 @@ export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrum
           (entries as PerformanceEntriesWithServerTiming).serverTiming = navEntries[0].serverTiming;
         }
       }
-
       captureTraceParentFromPerformanceEntries(entries);
+
       const span = _superStartSpan(spanName, performanceName, entries, parentSpan);
       const exposedSpan = span as any as Span;
       if(exposedSpan.name == "documentLoad") TransactionSpanManager.setTransactionSpan(span);
@@ -152,6 +154,7 @@ export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrum
       return span;
     }
 
+    //Override function
     exposedSuper._endSpan = (span, performanceName, entries) => {
 
       const transactionSpan = TransactionSpanManager.getTransactionSpan();
@@ -162,5 +165,4 @@ export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrum
       return _superEndSpan(span, performanceName, entries);
     };
   }
-
 }

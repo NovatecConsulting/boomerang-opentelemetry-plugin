@@ -9,7 +9,7 @@ export function addUrlParams(span: Span, url: string, excludeKeys: string[]){
       const [key, value] = keyValue.split("=");
       span.setAttribute(key, value);
 
-      if(!this.excludeKeys.includes(key)) window.BOOMR.addVar(key, value);
+      if(!excludeKeys.includes(key)) window.BOOMR.addVar(key, value);
     }
   }
 }

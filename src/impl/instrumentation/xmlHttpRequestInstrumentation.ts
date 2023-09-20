@@ -3,7 +3,6 @@ import {
   XMLHttpRequestInstrumentation,
   XMLHttpRequestInstrumentationConfig
 } from '@opentelemetry/instrumentation-xml-http-request';
-import { Span } from '@opentelemetry/api';
 import { addUrlParams } from './urlParams';
 
 export interface CustomXMLHttpRequestInstrumentationConfig extends XMLHttpRequestInstrumentationConfig {
@@ -20,14 +19,17 @@ export class CustomXMLHttpRequestInstrumentation extends XMLHttpRequestInstrumen
 
   constructor(config: CustomXMLHttpRequestInstrumentationConfig = {}) {
     super(config);
-    this.excludeKeys = config.excludeParameterKeys;
 
+    if(config.excludeParameterKeys)
+      this.excludeKeys = config.excludeParameterKeys;
+
+    //Store original function in variable
     const exposedSuper = this as any as ExposedXHRSuper;
     const _superStartSpan: ExposedXHRSuper['_createSpan'] = exposedSuper._createSpan.bind(this);
 
+    //Override function
     exposedSuper._createSpan = (xhr, url, method) => {
       const span = _superStartSpan(xhr, url, method);
-
       addUrlParams(span, url, this.excludeKeys);
 
       return span;
