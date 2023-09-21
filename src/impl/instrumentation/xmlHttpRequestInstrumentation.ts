@@ -22,12 +22,12 @@ export class CustomXMLHttpRequestInstrumentation extends XMLHttpRequestInstrumen
 
     //Store original function in variable
     const exposedSuper = this as any as ExposedXHRSuper;
-    const _superStartSpan: ExposedXHRSuper['_createSpan'] = exposedSuper._createSpan.bind(this);
+    const _superCreateSpan: ExposedXHRSuper['_createSpan'] = exposedSuper._createSpan.bind(this);
 
     //Override function
     exposedSuper._createSpan = (xhr, url, method) => {
-      const span = _superStartSpan(xhr, url, method);
-      addUrlParams(span, url, this.excludeUrlKeys);
+      const span = _superCreateSpan(xhr, url, method);
+      if(span) addUrlParams(span, url, this.excludeUrlKeys);
 
       return span;
     }

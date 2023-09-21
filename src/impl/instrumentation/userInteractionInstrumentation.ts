@@ -21,12 +21,13 @@ export class CustomUserInteractionInstrumentation extends UserInteractionInstrum
 
     //Store original function in variable
     const exposedSuper = this as any as ExposedUserInteractionSuper;
-    const _superStartSpan: ExposedUserInteractionSuper['_createSpan'] = exposedSuper._createSpan.bind(this);
+    const _superCreateSpan: ExposedUserInteractionSuper['_createSpan'] = exposedSuper._createSpan.bind(this);
 
     //Override function
     exposedSuper._createSpan = (element, eventName, parentSpan) => {
-      const span = _superStartSpan(element, eventName, parentSpan);
-      addUrlParams(span, location.href, this.excludeUrlKeys);
+      const span = _superCreateSpan(element, eventName, parentSpan);
+
+      if(span) addUrlParams(span, location.href, this.excludeUrlKeys);
 
       return span;
     }

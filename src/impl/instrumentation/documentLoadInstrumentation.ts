@@ -163,7 +163,7 @@ export class CustomDocumentLoadInstrumentation extends DocumentLoadInstrumentati
         const exposedSpan = span as any as Span;
         if(exposedSpan.name == "documentLoad") TransactionSpanManager.setTransactionSpan(span);
 
-        addUrlParams(span, location.href, this.excludeUrlKeys);
+        if(span) addUrlParams(span, location.href, this.excludeUrlKeys);
 
         return span;
       }
@@ -184,7 +184,7 @@ export class CustomDocumentLoadInstrumentation extends DocumentLoadInstrumentati
       exposedSuper._startSpan = (spanName, performanceName, entries, parentSpan) => {
         const span = _superStartSpan(spanName, performanceName, entries, parentSpan);
         const exposedSpan = span as any as Span;
-        if(exposedSpan.name == "documentLoad") addUrlParams(span, location.href, this.excludeUrlKeys);
+        if(span && exposedSpan.name == "documentLoad") addUrlParams(span, location.href, this.excludeUrlKeys);
 
         return span;
       }
