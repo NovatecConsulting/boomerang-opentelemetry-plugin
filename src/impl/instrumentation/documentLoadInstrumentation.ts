@@ -9,11 +9,11 @@ import { isTracingSuppressed } from '@opentelemetry/core/build/src/trace/suppres
 import { sanitizeAttributes } from '@opentelemetry/core/build/src/common/attributes';
 import { TransactionSpanManager } from '../transaction/transactionSpanManager';
 import { addUrlParams } from './urlParams';
+import { RequestParameterConfig } from '../../types';
 
 export interface CustomDocumentLoadInstrumentationConfig extends InstrumentationConfig {
   recordTransaction?: boolean;
   exporterDelay?: number;
-  excludeParameterKeys?: string[];
 }
 
 /**
@@ -130,16 +130,16 @@ export class CustomDocumentLoadInstrumentation extends DocumentLoadInstrumentati
   // Per default transaction should not be recorded
   private recordTransaction = false;
 
-  private excludeUrlKeys: string[] = [];
+  private readonly excludeUrlKeys: string[] = [];
 
-  constructor(config: CustomDocumentLoadInstrumentationConfig) {
+  constructor(config: CustomDocumentLoadInstrumentationConfig = {}, requestParameterConfig: RequestParameterConfig) {
     super(config);
-
-    if(config.excludeParameterKeys)
-      this.excludeUrlKeys = config.excludeParameterKeys;
 
     if(config.recordTransaction)
       this.recordTransaction = config.recordTransaction;
+
+    if(requestParameterConfig.enabled)
+      this.excludeUrlKeys = requestParameterConfig.excludeKeys;
 
     //Store original functions in variables
     const exposedSuper = this as any as ExposedDocumentLoadSuper;

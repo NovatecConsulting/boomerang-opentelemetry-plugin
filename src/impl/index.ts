@@ -24,8 +24,6 @@ import {
 import { Resource } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { B3InjectEncoding, B3Propagator } from '@opentelemetry/propagator-b3';
-import { DocumentLoadInstrumentation } from '@opentelemetry/instrumentation-document-load';
-import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-user-interaction';
 import { PluginProperties, ContextFunction, PropagationHeader } from '../types';
 import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
 import { MultiSpanProcessor, CustomSpanProcessor } from './spanProcessing';
@@ -34,6 +32,7 @@ import { CustomIdGenerator } from './transaction/transactionIdGeneration';
 import { TransactionSpanManager } from './transaction/transactionSpanManager';
 import { CustomXMLHttpRequestInstrumentation } from './instrumentation/xmlHttpRequestInstrumentation';
 import { CustomFetchInstrumentation } from './instrumentation/fetchInstrumentation';
+import { CustomUserInteractionInstrumentation } from './instrumentation/userInteractionInstrumentation';
 
 /**
  * TODOs:
@@ -59,8 +58,7 @@ export default class OpenTelemetryTracingImpl {
         path: "",
         applyCustomAttributesOnSpan: null, //(span: Span, request: Request) => { },
         ignoreUrls: [],
-        propagateTraceHeaderCorsUrls: [],
-        excludeParameterKeys: []
+        propagateTraceHeaderCorsUrls: []
       },
       instrument_xhr: {
         enabled: false,
@@ -68,20 +66,22 @@ export default class OpenTelemetryTracingImpl {
         applyCustomAttributesOnSpan: null, // (span: Span, xhr: XMLHttpRequest) => { },
         propagateTraceHeaderCorsUrls: [],
         ignoreUrls: [],
-        clearTimingResources: false,
-        excludeParameterKeys: []
+        clearTimingResources: false
       },
       instrument_document_load: {
         enabled: false,
         path: "",
         recordTransaction: false,
-        exporterDelay: 20,
-        excludeParameterKeys: []
+        exporterDelay: 20
       },
       instrument_user_interaction: {
         enabled: false,
         path: "",
       },
+    },
+    includeRequestParameter: {
+      enabled: false,
+      excludeKeys: []
     },
     exporter: {
       maxQueueSize: 100,
@@ -305,43 +305,43 @@ export default class OpenTelemetryTracingImpl {
   };
 
   private getInstrumentationPlugins = () => {
-    const { plugins, corsUrls, plugins_config } = this.props;
+    const { plugins, corsUrls, plugins_config, includeRequestParameter } = this.props;
     const instrumentations: any = [];
 
     // Instrumentation for the document on load (initial request)
     if (plugins_config?.instrument_document_load?.enabled !== false) {
-        instrumentations.push(new CustomDocumentLoadInstrumentation(plugins_config.instrument_document_load));
+        instrumentations.push(new CustomDocumentLoadInstrumentation(plugins_config.instrument_document_load, includeRequestParameter));
     }
     else if (plugins?.instrument_document_load !== false) {
-      instrumentations.push(new DocumentLoadInstrumentation());
+      instrumentations.push(new CustomDocumentLoadInstrumentation({}, includeRequestParameter));
     }
 
     // Instrumentation for user interactions
     if (plugins_config?.instrument_user_interaction?.enabled !== false) {
-      instrumentations.push(new UserInteractionInstrumentation(plugins_config.instrument_user_interaction));
+      instrumentations.push(new CustomUserInteractionInstrumentation(plugins_config.instrument_user_interaction, includeRequestParameter));
     }
     else if (plugins?.instrument_user_interaction !== false) {
-      instrumentations.push(new UserInteractionInstrumentation());
+      instrumentations.push(new CustomUserInteractionInstrumentation({}, includeRequestParameter));
     }
 
     // XMLHttpRequest Instrumentation for web plugin
     if (plugins_config?.instrument_xhr?.enabled !== false) {
-      instrumentations.push(new CustomXMLHttpRequestInstrumentation(plugins_config.instrument_xhr));
+      instrumentations.push(new CustomXMLHttpRequestInstrumentation(plugins_config.instrument_xhr, includeRequestParameter));
     } else if (plugins?.instrument_xhr !== false) {
       instrumentations.push(
         new CustomXMLHttpRequestInstrumentation({
           propagateTraceHeaderCorsUrls: corsUrls
-        })
+        }, includeRequestParameter)
       );
     }
 
     // Instrumentation for the fetch API if available
     const isFetchAPISupported = 'fetch' in window;
     if (isFetchAPISupported && plugins_config?.instrument_fetch?.enabled !== false) {
-      instrumentations.push(new CustomFetchInstrumentation(plugins_config.instrument_fetch));
+      instrumentations.push(new CustomFetchInstrumentation(plugins_config.instrument_fetch, includeRequestParameter));
     }
     else if (isFetchAPISupported && plugins?.instrument_fetch !== false) {
-      instrumentations.push(new CustomFetchInstrumentation());
+      instrumentations.push(new CustomFetchInstrumentation({}, includeRequestParameter));
     }
 
     return instrumentations;

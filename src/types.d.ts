@@ -2,8 +2,8 @@ import { PropagateTraceHeaderCorsUrls } from '@opentelemetry/sdk-trace-web';
 import { CollectorExporterNodeConfigBase } from '@opentelemetry/exporter-collector';
 import { CustomDocumentLoadInstrumentationConfig } from './impl/instrumentation/documentLoadInstrumentation';
 import { InstrumentationConfig } from "@opentelemetry/instrumentation";
-import { CustomXMLHttpRequestInstrumentationConfig } from './impl/instrumentation/xmlHttpRequestInstrumentation';
-import { CustomFetchInstrumentationConfig } from './impl/instrumentation/fetchInstrumentation';
+import { FetchInstrumentationConfig } from '@opentelemetry/instrumentation-fetch';
+import { XMLHttpRequestInstrumentationConfig } from '@opentelemetry/instrumentation-xml-http-request';
 
 export interface PluginProperties {
   samplingRate: number;
@@ -12,6 +12,7 @@ export interface PluginProperties {
   consoleOnly: boolean;
   plugins: OTPluginProperties;
   plugins_config: OTPluginConfig;
+  includeRequestParameter: RequestParameterConfig;
   exporter: OTExportProperties;
   commonAttributes: StringMap;
   prototypeExporterPatch: boolean;
@@ -37,10 +38,15 @@ export interface OTPluginProperties {
 }
 
 export interface OTPluginConfig {
-  instrument_fetch: CustomFetchInstrumentationConfig;
-  instrument_xhr: CustomXMLHttpRequestInstrumentationConfig;
+  instrument_fetch: FetchInstrumentationConfig;
+  instrument_xhr: XMLHttpRequestInstrumentationConfig;
   instrument_document_load: CustomDocumentLoadInstrumentationConfig;
   instrument_user_interaction: InstrumentationConfig;
+}
+
+export interface RequestParameterConfig {
+  enabled?: boolean;
+  excludeKeys: string[];
 }
 
 export interface OTExportProperties {

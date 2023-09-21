@@ -4,10 +4,7 @@ import {
   XMLHttpRequestInstrumentationConfig
 } from '@opentelemetry/instrumentation-xml-http-request';
 import { addUrlParams } from './urlParams';
-
-export interface CustomXMLHttpRequestInstrumentationConfig extends XMLHttpRequestInstrumentationConfig {
-  excludeParameterKeys?: string[];
-}
+import { RequestParameterConfig } from '../../types';
 
 type ExposedXHRSuper = {
   _createSpan(xhr: XMLHttpRequest, url: string, method: string): api.Span | undefined;
@@ -15,13 +12,13 @@ type ExposedXHRSuper = {
 
 export class CustomXMLHttpRequestInstrumentation extends XMLHttpRequestInstrumentation {
 
-  private excludeUrlKeys: string[] = [];
+  private readonly excludeUrlKeys: string[] = [];
 
-  constructor(config: CustomXMLHttpRequestInstrumentationConfig = {}) {
+  constructor(config: XMLHttpRequestInstrumentationConfig = {}, requestParameterConfig: RequestParameterConfig) {
     super(config);
 
-    if(config.excludeParameterKeys)
-      this.excludeUrlKeys = config.excludeParameterKeys;
+    if(requestParameterConfig.enabled)
+      this.excludeUrlKeys = requestParameterConfig.excludeKeys;
 
     //Store original function in variable
     const exposedSuper = this as any as ExposedXHRSuper;
