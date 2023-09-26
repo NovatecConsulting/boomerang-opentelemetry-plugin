@@ -23,6 +23,8 @@ Currently implemented features:
 * Automatic local context propagation using _Zone Context Manager_. [More details ↗](https://www.npmjs.com/package/@opentelemetry/context-zone)
 * Exporting collected spans to an OpenTelemetry collector.
 * Providing access to the OpenTelemtry Tracing-API for manual instrumentation.
+* Adding global variables to spans during runtime via _addVarToSpans()_
+* Tracing of the whole transaction with the document load span as root span
 
 ### OpenTelemetry Plugins
 
@@ -78,6 +80,8 @@ BOOMR.init({
       instrument_document_load: {
         enabled: false,
         path: "",
+        recordTransaction: false, //If true, the transaction will be traced with the document load span as root span
+        exporterDelay: 20 // Delay to allow the exporter to export the transaction span before page unload
       },
       instrument_user_interaction: {
         enabled: false,
@@ -90,6 +94,14 @@ BOOMR.init({
       instrument_xhr: true,
       instrument_document_load: true,
       instrument_user_interaction: true
+    },
+    // Additional instrumentation config, which will be applied to all plugins
+    global_instrumentation_config: {
+      // Include request paramater to spans and the corresponding beacons
+      requestParameter: {
+        enabled: false,
+        excludeKeysFromBeacons: [] //Keys, which should not be included in beacons, for instance due to cardinality concerns
+      }
     },
     exporter: {
       maxQueueSize: 100,
@@ -109,26 +121,28 @@ BOOMR.init({
 ```
 Available options are:
 
-| Option | Description | Default value |
-|---|---|---|
-| `samplingRate` | Sampling rate to use when collecting spans. Value must be between `0` and `1`. | `1` |
-| `corsUrls` | Array of CORS URLs to take into consideration when propagating trace information. By default, CORS URLs are excluded from the propagation. | `[]` |
-| `collectorConfiguration` | Object that defines the OpenTelemetry collector configuration, like the URL to send spans to. See [CollectorExporterNodeConfigBase](https://www.npmjs.com/package/@opentelemetry/exporter-collector) interface for all options. | `undefined` |
-| `consoleOnly` | If `true` spans will be logged on the console and not sent to the collector endpoint. | `false` |
-| `plugins` | Object for enabling and disabling OpenTelemetry plugins. |  |
-| `plugins.instrument_fetch` | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-instrumentation-fetch) for insturmentation of the fetch API. This will only be used in case the `fetch` API exists. | `true` |
-| `plugins.instrument_xhr` | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-instrumentation-xml-http-request) for insturmentation of the XMLHttpRequest API. | `true` |
-| `plugins.instrument_document_load` | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-document-load) for insturmentation of the document load (initial request). | `true` |
-| `plugins.instrument_user_interaction` | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-user-interaction) for insturmentation of user interactions. | `true` |
-| `exporter` | Object for configuring the span exporter. Only used if `consoleOnly` is not enabled. ||
-| `exporter.maxQueueSize` | The maximum queue size. After the size is reached spans are dropped. | `100` |
-| `exporter.maxExportBatchSize` | The maximum batch size of every export. It must be smaller or equal to `maxQueueSize`. | `10` |
-| `exporter.scheduledDelayMillis` | The interval between two consecutive exports. | `500` |
-| `exporter.exportTimeoutMillis` | How long the export can run before it is cancelled. | `30000` |
-| `commonAttributes` | An Object defining common span attributes which will be added to each recorded span. | `{}` |
-| `serviceName` | A `string` or function which can be used to set the spans' service name. A function can be defined for dynamically providing the service name, e.g. based on Boomerang values. | `undefined` |
-| `prototypeExporterPatch` | Patches the OpenTelemetry collector-span-exporter, so it is compatible with the Prototype framework. This is only necessary and should only be activated, when the Prototype framework is used. [For more information see the linked file](https://github.com/NovatecConsulting/boomerang-opentelemetry-plugin/blob/master/src/impl/patchCollectorPrototype.ts). | `false` |
-| `propagationHeader` | Defines the format of the context propagation header. Available formats: `TRACE_CONTEXT`, `B3_SINGLE`, `B3_MULTI` | `TRACE_CONTEXT` |
+| Option                                    | Description                                                                                                                                                                                                                                                                                                                                                      | Default value |
+|-------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---|
+| `samplingRate`                            | Sampling rate to use when collecting spans. Value must be between `0` and `1`.                                                                                                                                                                                                                                                                                   | `1` |
+| `corsUrls`                                | Array of CORS URLs to take into consideration when propagating trace information. By default, CORS URLs are excluded from the propagation.                                                                                                                                                                                                                       | `[]` |
+| `collectorConfiguration`                  | Object that defines the OpenTelemetry collector configuration, like the URL to send spans to. See [CollectorExporterNodeConfigBase](https://www.npmjs.com/package/@opentelemetry/exporter-collector) interface for all options.                                                                                                                                  | `undefined` |
+| `consoleOnly`                             | If `true` spans will be logged on the console and not sent to the collector endpoint.                                                                                                                                                                                                                                                                            | `false` |
+| `plugins`                                 | Object for enabling and disabling OpenTelemetry plugins.                                                                                                                                                                                                                                                                                                         |  |
+| `plugins.instrument_fetch`                | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-instrumentation-fetch) for insturmentation of the fetch API. This will only be used in case the `fetch` API exists.                                                                                                                      | `true` |
+| `plugins.instrument_xhr`                  | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-instrumentation-xml-http-request) for insturmentation of the XMLHttpRequest API.                                                                                                                                                         | `true` |
+| `plugins.instrument_document_load`        | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-document-load) for insturmentation of the document load (initial request).                                                                                                                                    | `true` |
+| `plugins.instrument_user_interaction`     | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-user-interaction) for insturmentation of user interactions.                                                                                                                                                   | `true` |
+| `global_instrumentation`                  | Object for configuring additional instrumentations, which will be applied to every OpenTelemetry plugin.                                                                                                                                                                                                                                                         ||
+| `global_instrumentation.requestParameter` | If enabled, existing request parameters will be added as attributes to spans and, if not excluded, will be added to the corresponding beacon as well.                                                                                                                                                                                                            ||
+| `exporter`                                | Object for configuring the span exporter. Only used if `consoleOnly` is not enabled.                                                                                                                                                                                                                                                                             ||
+| `exporter.maxQueueSize`                   | The maximum queue size. After the size is reached spans are dropped.                                                                                                                                                                                                                                                                                             | `100` |
+| `exporter.maxExportBatchSize`             | The maximum batch size of every export. It must be smaller or equal to `maxQueueSize`.                                                                                                                                                                                                                                                                           | `10` |
+| `exporter.scheduledDelayMillis`           | The interval between two consecutive exports.                                                                                                                                                                                                                                                                                                                    | `500` |
+| `exporter.exportTimeoutMillis`            | How long the export can run before it is cancelled.                                                                                                                                                                                                                                                                                                              | `30000` |
+| `commonAttributes`                        | An Object defining common span attributes which will be added to each recorded span.                                                                                                                                                                                                                                                                             | `{}` |
+| `serviceName`                             | A `string` or function which can be used to set the spans' service name. A function can be defined for dynamically providing the service name, e.g. based on Boomerang values.                                                                                                                                                                                   | `undefined` |
+| `prototypeExporterPatch`                  | Patches the OpenTelemetry collector-span-exporter, so it is compatible with the Prototype framework. This is only necessary and should only be activated, when the Prototype framework is used. [For more information see the linked file](https://github.com/NovatecConsulting/boomerang-opentelemetry-plugin/blob/master/src/impl/patchCollectorPrototype.ts). | `false` |
+| `propagationHeader`                       | Defines the format of the context propagation header. Available formats: `TRACE_CONTEXT`, `B3_SINGLE`, `B3_MULTI`                                                                                                                                                                                                                                                | `TRACE_CONTEXT` |
 
 ## Manual Instrumentation
 
@@ -157,7 +171,21 @@ span.end();
 
 The plugin also provides direct access to the OpenTelemetry API via the following function: `getOpenTelemetryApi()`. This returns the OpenTelemetry API and can be used for more advanced data collection.
 
-### Asynchronous inclusion of Boomerang
+## Transaction Recording
+
+If `plugins.instrument_document_load.recordTransaction` is set `true`, the document load span will be kept open during the whole transaction
+and will be used as root span. 
+This transaction span will stay open until page unload or until the function 
+`startNewTransaction(spanName: string)` was called. This function closes the current transaction span and opens a new one with
+the provided span name.
+
+Additionally, during the page load the document load span will check the `Server-Timing`-response-header for an existing trace context.
+If existing, this trace context will be used to create the document load span.
+The trace context should be included in the `Server-Timing`-header like this: 
+
+`traceparent; desc="00-f524a0cf2c5246077dd36b094d8e1132-b5fa4f189acedb66-01"`
+
+## Asynchronous inclusion of Boomerang
 
 Make sure to check that `window.BOOMR.plugins.OpenTelemetry` actually exists prior to using it in your code in case you load boomerang asynchronously.
 
