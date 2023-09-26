@@ -12,7 +12,7 @@ export interface PluginProperties {
   consoleOnly: boolean;
   plugins: OTPluginProperties;
   plugins_config: OTPluginConfig;
-  includeRequestParameter: RequestParameterConfig;
+  global_instrumentation: GlobalInstrumentationConfig;
   exporter: OTExportProperties;
   commonAttributes: StringMap;
   prototypeExporterPatch: boolean;
@@ -44,9 +44,13 @@ export interface OTPluginConfig {
   instrument_user_interaction: InstrumentationConfig;
 }
 
+export interface GlobalInstrumentationConfig {
+  requestParameter: RequestParameterConfig;
+}
+
 export interface RequestParameterConfig {
   enabled?: boolean;
-  excludeKeys: string[];
+  excludeKeysFromBeacons: string[];
 }
 
 export interface OTExportProperties {

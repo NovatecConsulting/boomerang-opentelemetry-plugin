@@ -1,7 +1,7 @@
 import * as api from '@opentelemetry/api';
 import { addUrlParams } from './urlParams';
 import { FetchInstrumentation, FetchInstrumentationConfig } from '@opentelemetry/instrumentation-fetch';
-import { RequestParameterConfig } from '../../types';
+import { GlobalInstrumentationConfig, RequestParameterConfig } from '../../types';
 import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-user-interaction';
 import { InstrumentationConfig } from '@opentelemetry/instrumentation';
 
@@ -11,13 +11,9 @@ type ExposedUserInteractionSuper = {
 
 export class CustomUserInteractionInstrumentation extends UserInteractionInstrumentation {
 
-  private readonly excludeUrlKeys: string[] = [];
-
-  constructor(config: InstrumentationConfig = {}, requestParameterConfig: RequestParameterConfig) {
+  constructor(config: InstrumentationConfig = {}, globalInstrumentationConfig: GlobalInstrumentationConfig) {
     super(config);
-
-    if(requestParameterConfig.enabled)
-      this.excludeUrlKeys = requestParameterConfig.excludeKeys;
+    const { requestParameter} = globalInstrumentationConfig;
 
     //Store original function in variable
     const exposedSuper = this as any as ExposedUserInteractionSuper;
@@ -27,7 +23,10 @@ export class CustomUserInteractionInstrumentation extends UserInteractionInstrum
     exposedSuper._createSpan = (element, eventName, parentSpan) => {
       const span = _superCreateSpan(element, eventName, parentSpan);
 
-      if(span) addUrlParams(span, location.href, this.excludeUrlKeys);
+      if(span && requestParameter?.enabled) {
+        if(requestParameter.excludeKeysFromBeacons) addUrlParams(span, location.href, requestParameter.excludeKeysFromBeacons);
+        else addUrlParams(span, location.href);
+      }
 
       return span;
     }

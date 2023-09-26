@@ -79,9 +79,11 @@ export default class OpenTelemetryTracingImpl {
         path: "",
       },
     },
-    includeRequestParameter: {
-      enabled: false,
-      excludeKeys: []
+    global_instrumentation: {
+      requestParameter: {
+        enabled: false,
+        excludeKeysFromBeacons: []
+      }
     },
     exporter: {
       maxQueueSize: 100,
@@ -305,43 +307,46 @@ export default class OpenTelemetryTracingImpl {
   };
 
   private getInstrumentationPlugins = () => {
-    const { plugins, corsUrls, plugins_config, includeRequestParameter } = this.props;
+    const {
+      plugins,
+      corsUrls,
+      plugins_config,
+      global_instrumentation
+    } = this.props;
     const instrumentations: any = [];
 
     // Instrumentation for the document on load (initial request)
     if (plugins_config?.instrument_document_load?.enabled !== false) {
-        instrumentations.push(new CustomDocumentLoadInstrumentation(plugins_config.instrument_document_load, includeRequestParameter));
+        instrumentations.push(new CustomDocumentLoadInstrumentation(plugins_config.instrument_document_load, global_instrumentation));
     }
     else if (plugins?.instrument_document_load !== false) {
-      instrumentations.push(new CustomDocumentLoadInstrumentation({}, includeRequestParameter));
+      instrumentations.push(new CustomDocumentLoadInstrumentation({}, global_instrumentation));
     }
 
     // Instrumentation for user interactions
     if (plugins_config?.instrument_user_interaction?.enabled !== false) {
-      instrumentations.push(new CustomUserInteractionInstrumentation(plugins_config.instrument_user_interaction, includeRequestParameter));
+      instrumentations.push(new CustomUserInteractionInstrumentation(plugins_config.instrument_user_interaction, global_instrumentation));
     }
     else if (plugins?.instrument_user_interaction !== false) {
-      instrumentations.push(new CustomUserInteractionInstrumentation({}, includeRequestParameter));
+      instrumentations.push(new CustomUserInteractionInstrumentation({}, global_instrumentation));
     }
 
     // XMLHttpRequest Instrumentation for web plugin
     if (plugins_config?.instrument_xhr?.enabled !== false) {
-      instrumentations.push(new CustomXMLHttpRequestInstrumentation(plugins_config.instrument_xhr, includeRequestParameter));
+      instrumentations.push(new CustomXMLHttpRequestInstrumentation(plugins_config.instrument_xhr, global_instrumentation));
     } else if (plugins?.instrument_xhr !== false) {
       instrumentations.push(
-        new CustomXMLHttpRequestInstrumentation({
-          propagateTraceHeaderCorsUrls: corsUrls
-        }, includeRequestParameter)
+        new CustomXMLHttpRequestInstrumentation({ propagateTraceHeaderCorsUrls: corsUrls }, global_instrumentation)
       );
     }
 
     // Instrumentation for the fetch API if available
     const isFetchAPISupported = 'fetch' in window;
     if (isFetchAPISupported && plugins_config?.instrument_fetch?.enabled !== false) {
-      instrumentations.push(new CustomFetchInstrumentation(plugins_config.instrument_fetch, includeRequestParameter));
+      instrumentations.push(new CustomFetchInstrumentation(plugins_config.instrument_fetch, global_instrumentation));
     }
     else if (isFetchAPISupported && plugins?.instrument_fetch !== false) {
-      instrumentations.push(new CustomFetchInstrumentation({}, includeRequestParameter));
+      instrumentations.push(new CustomFetchInstrumentation({}, global_instrumentation));
     }
 
     return instrumentations;

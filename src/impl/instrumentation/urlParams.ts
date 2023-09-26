@@ -6,7 +6,7 @@ import { Span } from '@opentelemetry/api';
  * @param url complete request url
  * @param excludeKeys list of keys, which should not be written to beacons
  */
-export function addUrlParams(span: Span, url: string, excludeKeys: string[]){
+export function addUrlParams(span: Span, url: string, excludeKeys: string[] = []){
   const urlParams = url.split("?")[1];
 
   if(urlParams) {

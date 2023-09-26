@@ -9,7 +9,7 @@ import { isTracingSuppressed } from '@opentelemetry/core/build/src/trace/suppres
 import { sanitizeAttributes } from '@opentelemetry/core/build/src/common/attributes';
 import { TransactionSpanManager } from '../transaction/transactionSpanManager';
 import { addUrlParams } from './urlParams';
-import { RequestParameterConfig } from '../../types';
+import { GlobalInstrumentationConfig, RequestParameterConfig } from '../../types';
 
 export interface CustomDocumentLoadInstrumentationConfig extends InstrumentationConfig {
   recordTransaction?: boolean;
@@ -130,16 +130,12 @@ export class CustomDocumentLoadInstrumentation extends DocumentLoadInstrumentati
   // Per default transaction should not be recorded
   private recordTransaction = false;
 
-  private readonly excludeUrlKeys: string[] = [];
-
-  constructor(config: CustomDocumentLoadInstrumentationConfig = {}, requestParameterConfig: RequestParameterConfig) {
+  constructor(config: CustomDocumentLoadInstrumentationConfig = {}, globalInstrumentationConfig: GlobalInstrumentationConfig) {
     super(config);
+    const { requestParameter} = globalInstrumentationConfig;
 
     if(config.recordTransaction)
       this.recordTransaction = config.recordTransaction;
-
-    if(requestParameterConfig.enabled)
-      this.excludeUrlKeys = requestParameterConfig.excludeKeys;
 
     //Store original functions in variables
     const exposedSuper = this as any as ExposedDocumentLoadSuper;
@@ -163,7 +159,10 @@ export class CustomDocumentLoadInstrumentation extends DocumentLoadInstrumentati
         const exposedSpan = span as any as Span;
         if(exposedSpan.name == "documentLoad") TransactionSpanManager.setTransactionSpan(span);
 
-        if(span) addUrlParams(span, location.href, this.excludeUrlKeys);
+        if(span && exposedSpan.name == "documentLoad" && requestParameter?.enabled) {
+          if(requestParameter.excludeKeysFromBeacons) addUrlParams(span, location.href, requestParameter.excludeKeysFromBeacons);
+          else addUrlParams(span, location.href);
+        }
 
         return span;
       }
@@ -184,7 +183,11 @@ export class CustomDocumentLoadInstrumentation extends DocumentLoadInstrumentati
       exposedSuper._startSpan = (spanName, performanceName, entries, parentSpan) => {
         const span = _superStartSpan(spanName, performanceName, entries, parentSpan);
         const exposedSpan = span as any as Span;
-        if(span && exposedSpan.name == "documentLoad") addUrlParams(span, location.href, this.excludeUrlKeys);
+
+        if(span && exposedSpan.name == "documentLoad" && requestParameter?.enabled) {
+          if(requestParameter.excludeKeysFromBeacons) addUrlParams(span, location.href, requestParameter.excludeKeysFromBeacons);
+          else addUrlParams(span, location.href);
+        }
 
         return span;
       }

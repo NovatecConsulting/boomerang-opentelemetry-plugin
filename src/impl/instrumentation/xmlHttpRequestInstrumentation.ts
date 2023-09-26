@@ -4,7 +4,7 @@ import {
   XMLHttpRequestInstrumentationConfig
 } from '@opentelemetry/instrumentation-xml-http-request';
 import { addUrlParams } from './urlParams';
-import { RequestParameterConfig } from '../../types';
+import { GlobalInstrumentationConfig, RequestParameterConfig } from '../../types';
 
 type ExposedXHRSuper = {
   _createSpan(xhr: XMLHttpRequest, url: string, method: string): api.Span | undefined;
@@ -12,13 +12,9 @@ type ExposedXHRSuper = {
 
 export class CustomXMLHttpRequestInstrumentation extends XMLHttpRequestInstrumentation {
 
-  private readonly excludeUrlKeys: string[] = [];
-
-  constructor(config: XMLHttpRequestInstrumentationConfig = {}, requestParameterConfig: RequestParameterConfig) {
+  constructor(config: XMLHttpRequestInstrumentationConfig = {}, globalInstrumentationConfig: GlobalInstrumentationConfig) {
     super(config);
-
-    if(requestParameterConfig.enabled)
-      this.excludeUrlKeys = requestParameterConfig.excludeKeys;
+    const { requestParameter} = globalInstrumentationConfig;
 
     //Store original function in variable
     const exposedSuper = this as any as ExposedXHRSuper;
@@ -27,7 +23,11 @@ export class CustomXMLHttpRequestInstrumentation extends XMLHttpRequestInstrumen
     //Override function
     exposedSuper._createSpan = (xhr, url, method) => {
       const span = _superCreateSpan(xhr, url, method);
-      if(span) addUrlParams(span, url, this.excludeUrlKeys);
+
+      if(span && requestParameter?.enabled) {
+        if(requestParameter.excludeKeysFromBeacons) addUrlParams(span, url, requestParameter.excludeKeysFromBeacons);
+        else addUrlParams(span, url);
+      }
 
       return span;
     }
