@@ -96,8 +96,8 @@ BOOMR.init({
       instrument_user_interaction: true
     },
     // Additional instrumentation config, which will be applied to all plugins
-    global_instrumentation_config: {
-      // Include request paramater to spans and the corresponding beacons
+    global_instrumentation: {
+      // Include request parameter to spans and the corresponding beacons
       requestParameter: {
         enabled: false,
         excludeKeysFromBeacons: [] //Keys, which should not be included in beacons, for instance due to cardinality concerns
