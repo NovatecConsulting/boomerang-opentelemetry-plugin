@@ -21,10 +21,8 @@ export class CustomFetchInstrumentation extends FetchInstrumentation {
     exposedSuper._createSpan = (url, options = {}) => {
       const span = _superCreateSpan(url, options);
 
-      if(span && requestParameter?.enabled) {
-        if(requestParameter.excludeKeysFromBeacons) addUrlParams(span, url, requestParameter.excludeKeysFromBeacons);
-        else addUrlParams(span, url);
-      }
+      if(span && requestParameter?.enabled)
+        addUrlParams(span, url, requestParameter.excludeKeysFromBeacons);
 
       return span;
     }

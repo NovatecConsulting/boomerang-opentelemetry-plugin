@@ -159,17 +159,14 @@ export class CustomDocumentLoadInstrumentation extends DocumentLoadInstrumentati
         const exposedSpan = span as any as Span;
         if(exposedSpan.name == "documentLoad") TransactionSpanManager.setTransactionSpan(span);
 
-        if(span && exposedSpan.name == "documentLoad" && requestParameter?.enabled) {
-          if(requestParameter.excludeKeysFromBeacons) addUrlParams(span, location.href, requestParameter.excludeKeysFromBeacons);
-          else addUrlParams(span, location.href);
-        }
+        if(span && exposedSpan.name == "documentLoad" && requestParameter?.enabled)
+          addUrlParams(span, location.href, requestParameter.excludeKeysFromBeacons);
 
         return span;
       }
 
       //Override function
       exposedSuper._endSpan = (span, performanceName, entries) => {
-
         const transactionSpan = TransactionSpanManager.getTransactionSpan();
         // Don't close transactionSpan
         // transactionSpan will be closed through "beforeunload"-event
@@ -184,10 +181,8 @@ export class CustomDocumentLoadInstrumentation extends DocumentLoadInstrumentati
         const span = _superStartSpan(spanName, performanceName, entries, parentSpan);
         const exposedSpan = span as any as Span;
 
-        if(span && exposedSpan.name == "documentLoad" && requestParameter?.enabled) {
-          if(requestParameter.excludeKeysFromBeacons) addUrlParams(span, location.href, requestParameter.excludeKeysFromBeacons);
-          else addUrlParams(span, location.href);
-        }
+        if(span && exposedSpan.name == "documentLoad" && requestParameter?.enabled)
+          addUrlParams(span, location.href, requestParameter.excludeKeysFromBeacons);
 
         return span;
       }

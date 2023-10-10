@@ -23,10 +23,8 @@ export class CustomUserInteractionInstrumentation extends UserInteractionInstrum
     exposedSuper._createSpan = (element, eventName, parentSpan) => {
       const span = _superCreateSpan(element, eventName, parentSpan);
 
-      if(span && requestParameter?.enabled) {
-        if(requestParameter.excludeKeysFromBeacons) addUrlParams(span, location.href, requestParameter.excludeKeysFromBeacons);
-        else addUrlParams(span, location.href);
-      }
+      if(span && requestParameter?.enabled)
+        addUrlParams(span, location.href, requestParameter.excludeKeysFromBeacons);
 
       return span;
     }

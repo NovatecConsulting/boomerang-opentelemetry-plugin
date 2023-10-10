@@ -24,10 +24,8 @@ export class CustomXMLHttpRequestInstrumentation extends XMLHttpRequestInstrumen
     exposedSuper._createSpan = (xhr, url, method) => {
       const span = _superCreateSpan(xhr, url, method);
 
-      if(span && requestParameter?.enabled) {
-        if(requestParameter.excludeKeysFromBeacons) addUrlParams(span, url, requestParameter.excludeKeysFromBeacons);
-        else addUrlParams(span, url);
-      }
+      if(span && requestParameter?.enabled)
+        addUrlParams(span, url, requestParameter.excludeKeysFromBeacons);
 
       return span;
     }
