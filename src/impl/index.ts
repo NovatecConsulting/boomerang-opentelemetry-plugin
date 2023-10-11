@@ -1,4 +1,4 @@
-import api, { context, trace, Span } from '@opentelemetry/api';
+import api, { context, trace, Span, SpanOptions, Context } from '@opentelemetry/api';
 import {
   AlwaysOnSampler,
   AlwaysOffSampler,
@@ -27,7 +27,10 @@ import { B3InjectEncoding, B3Propagator } from '@opentelemetry/propagator-b3';
 import { PluginProperties, ContextFunction, PropagationHeader } from '../types';
 import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
 import { MultiSpanProcessor, CustomSpanProcessor } from './spanProcessing';
-import { CustomDocumentLoadInstrumentation, patchTracer } from './instrumentation/documentLoadInstrumentation';
+import {
+  CustomDocumentLoadInstrumentation,
+  patchTracerForTransactions
+} from './instrumentation/documentLoadInstrumentation';
 import { CustomIdGenerator } from './transaction/transactionIdGeneration';
 import { TransactionSpanManager } from './transaction/transactionSpanManager';
 import { CustomXMLHttpRequestInstrumentation } from './instrumentation/xmlHttpRequestInstrumentation';
@@ -181,10 +184,8 @@ export default class OpenTelemetryTracingImpl {
     // store the webtracer
     this.traceProvider = providerWithZone;
 
-    // If recordTransaction is enabled, patch the Tracer to always use the transaction span as root span
-    // and initialize the transaction data storage
+    // If recordTransaction is enabled, initialize the transaction manager
     if(this.isTransactionRecordingEnabled()) {
-      patchTracer();
       const delay = this.props.plugins_config?.instrument_document_load?.exporterDelay;
       TransactionSpanManager.initialize(true, this.customIdGenerator);
 
@@ -260,15 +261,22 @@ export default class OpenTelemetryTracingImpl {
    */
   private instrumentTracerClass = () => {
     const { commonAttributes, serviceName } = this.props;
-    // don't patch the function if no attributes are defined
-    if (Object.keys(commonAttributes).length <= 0) {
+
+    let startSpanFunction: (name: string, options?: SpanOptions, context?: Context) => (Span);
+
+    // If recordTransaction is enabled, patch the Tracer to always use the transaction span as root span
+    if(this.isTransactionRecordingEnabled)
+      startSpanFunction = patchTracerForTransactions();
+    else
+      startSpanFunction = Tracer.prototype.startSpan;
+
+    // don't patch the function if no attributes are defined AND no serviceName is defined
+    if (!serviceName && Object.keys(commonAttributes).length <= 0) {
       return;
     }
 
-    const originalStartSpanFunction = Tracer.prototype.startSpan;
-
     Tracer.prototype.startSpan = function () {
-      const span: Span = originalStartSpanFunction.apply(this, arguments);
+      const span: Span = startSpanFunction.apply(this, arguments);
 
       // add common attributes to each span
       if (commonAttributes) {

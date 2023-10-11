@@ -10,6 +10,7 @@ import { sanitizeAttributes } from '@opentelemetry/core/build/src/common/attribu
 import { TransactionSpanManager } from '../transaction/transactionSpanManager';
 import { addUrlParams } from './urlParams';
 import { GlobalInstrumentationConfig, RequestParameterConfig } from '../../types';
+import { Context, SpanOptions } from '@opentelemetry/api';
 
 export interface CustomDocumentLoadInstrumentationConfig extends InstrumentationConfig {
   recordTransaction?: boolean;
@@ -18,12 +19,17 @@ export interface CustomDocumentLoadInstrumentationConfig extends Instrumentation
 
 /**
  * Patch the Tracer class to use the transaction span as root span
+ * For any additional instrumentation of the startSpan() function, you have to use the
+ * new returned function
+ *
  * OpenTelemetry version: 0.25.0
+ *
+ * @return new startSpan() function
  */
-export function patchTracer() {
+export function patchTracerForTransactions(): (name: string, options?: SpanOptions, context?: Context) => (api.Span) {
   // Overwrite startSpan() in Tracer class
   // Copy of the original startSpan()-function with additional logic inside the function to determine the parentContext
-  Tracer.prototype.startSpan = function (
+  const overwrittenFunction = function (
     name: string,
     options: api.SpanOptions = {},
     context = api.context.active()
@@ -115,6 +121,9 @@ export function patchTracer() {
     span.setAttributes(Object.assign(attributes, samplingResult.attributes));
     return span;
   }
+
+  Tracer.prototype.startSpan = overwrittenFunction;
+  return overwrittenFunction;
 }
 
 type PerformanceEntriesWithServerTiming = PerformanceEntries & {serverTiming?: ReadonlyArray<({name: string, duration: number, description: string})>}
