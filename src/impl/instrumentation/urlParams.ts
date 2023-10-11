@@ -15,7 +15,8 @@ export function addUrlParams(span: Span, url: string, excludeKeys: string[] = []
       const [key, value] = keyValue.split("=");
       span.setAttribute(key, value);
 
-      if(excludeKeys && !excludeKeys.includes(key)) window.BOOMR.addVar(key, value);
+      // if excludeKey equals null OR key is not included, add var to beacon
+      if(!excludeKeys || !excludeKeys.includes(key)) window.BOOMR.addVar(key, value);
     }
   }
 }
