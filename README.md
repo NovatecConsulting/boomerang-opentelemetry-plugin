@@ -180,7 +180,7 @@ This transaction span will stay open until page unload or until the function
 the provided span name.
 
 Additionally, during the page load the document load span will check the `Server-Timing`-response-header for an existing trace context.
-If existing, this trace context will be used to create the document load span.
+If existing, this trace context will be used to create the document load span. The trace context has to be in the W3C-format.
 The trace context should be included in the `Server-Timing`-header like this: 
 
 `traceparent; desc="00-f524a0cf2c5246077dd36b094d8e1132-b5fa4f189acedb66-01"`

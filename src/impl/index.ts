@@ -265,7 +265,7 @@ export default class OpenTelemetryTracingImpl {
     let startSpanFunction: (name: string, options?: SpanOptions, context?: Context) => (Span);
 
     // If recordTransaction is enabled, patch the Tracer to always use the transaction span as root span
-    if(this.isTransactionRecordingEnabled)
+    if(this.isTransactionRecordingEnabled())
       startSpanFunction = patchTracerForTransactions();
     else
       startSpanFunction = Tracer.prototype.startSpan;
