@@ -1,5 +1,4 @@
 import api, { Span } from '@opentelemetry/api';
-import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
 import { CustomIdGenerator } from './transactionIdGeneration';
 
 /**

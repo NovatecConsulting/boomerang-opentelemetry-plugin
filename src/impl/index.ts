@@ -1,4 +1,4 @@
-import api, { context, trace, Span } from '@opentelemetry/api';
+import api, { context, trace, Span, SpanOptions, Context } from '@opentelemetry/api';
 import {
   AlwaysOnSampler,
   AlwaysOffSampler,
@@ -24,16 +24,18 @@ import {
 import { Resource } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { B3InjectEncoding, B3Propagator } from '@opentelemetry/propagator-b3';
-import { XMLHttpRequestInstrumentation } from '@opentelemetry/instrumentation-xml-http-request';
-import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
-import { DocumentLoadInstrumentation } from '@opentelemetry/instrumentation-document-load';
-import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-user-interaction';
 import { PluginProperties, ContextFunction, PropagationHeader } from '../types';
 import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
 import { MultiSpanProcessor, CustomSpanProcessor } from './spanProcessing';
-import { DocumentLoadServerTimingInstrumentation, patchTracer } from './documentLoadInstrumentation';
-import { CustomIdGenerator } from './transactionIdGeneration';
-import { TransactionSpanManager } from './transactionSpanManager';
+import {
+  CustomDocumentLoadInstrumentation,
+  patchTracerForTransactions
+} from './instrumentation/documentLoadInstrumentation';
+import { CustomIdGenerator } from './transaction/transactionIdGeneration';
+import { TransactionSpanManager } from './transaction/transactionSpanManager';
+import { CustomXMLHttpRequestInstrumentation } from './instrumentation/xmlHttpRequestInstrumentation';
+import { CustomFetchInstrumentation } from './instrumentation/fetchInstrumentation';
+import { CustomUserInteractionInstrumentation } from './instrumentation/userInteractionInstrumentation';
 
 /**
  * TODOs:
@@ -67,7 +69,7 @@ export default class OpenTelemetryTracingImpl {
         applyCustomAttributesOnSpan: null, // (span: Span, xhr: XMLHttpRequest) => { },
         propagateTraceHeaderCorsUrls: [],
         ignoreUrls: [],
-        clearTimingResources: false,
+        clearTimingResources: false
       },
       instrument_document_load: {
         enabled: false,
@@ -79,6 +81,12 @@ export default class OpenTelemetryTracingImpl {
         enabled: false,
         path: "",
       },
+    },
+    global_instrumentation: {
+      requestParameter: {
+        enabled: false,
+        excludeKeysFromBeacons: []
+      }
     },
     exporter: {
       maxQueueSize: 100,
@@ -176,10 +184,8 @@ export default class OpenTelemetryTracingImpl {
     // store the webtracer
     this.traceProvider = providerWithZone;
 
-    // If recordTransaction is enabled, patch the Tracer to always use the transaction span as root span
-    // and initialize the transaction data storage
+    // If recordTransaction is enabled, initialize the transaction manager
     if(this.isTransactionRecordingEnabled()) {
-      patchTracer();
       const delay = this.props.plugins_config?.instrument_document_load?.exporterDelay;
       TransactionSpanManager.initialize(true, this.customIdGenerator);
 
@@ -255,15 +261,22 @@ export default class OpenTelemetryTracingImpl {
    */
   private instrumentTracerClass = () => {
     const { commonAttributes, serviceName } = this.props;
-    // don't patch the function if no attributes are defined
-    if (Object.keys(commonAttributes).length <= 0) {
+
+    let startSpanFunction: (name: string, options?: SpanOptions, context?: Context) => (Span);
+
+    // If recordTransaction is enabled, patch the Tracer to always use the transaction span as root span
+    if(this.isTransactionRecordingEnabled())
+      startSpanFunction = patchTracerForTransactions();
+    else
+      startSpanFunction = Tracer.prototype.startSpan;
+
+    // don't patch the function if no attributes are defined AND no serviceName is defined
+    if (!serviceName && Object.keys(commonAttributes).length <= 0) {
       return;
     }
 
-    const originalStartSpanFunction = Tracer.prototype.startSpan;
-
     Tracer.prototype.startSpan = function () {
-      const span: Span = originalStartSpanFunction.apply(this, arguments);
+      const span: Span = startSpanFunction.apply(this, arguments);
 
       // add common attributes to each span
       if (commonAttributes) {
@@ -302,46 +315,46 @@ export default class OpenTelemetryTracingImpl {
   };
 
   private getInstrumentationPlugins = () => {
-    const { plugins, corsUrls, plugins_config } = this.props;
+    const {
+      plugins,
+      corsUrls,
+      plugins_config,
+      global_instrumentation
+    } = this.props;
     const instrumentations: any = [];
 
     // Instrumentation for the document on load (initial request)
     if (plugins_config?.instrument_document_load?.enabled !== false) {
-      if(this.isTransactionRecordingEnabled())
-        instrumentations.push(new DocumentLoadServerTimingInstrumentation(plugins_config.instrument_document_load));
-      else
-        instrumentations.push(new DocumentLoadInstrumentation(plugins_config.instrument_document_load));
+        instrumentations.push(new CustomDocumentLoadInstrumentation(plugins_config.instrument_document_load, global_instrumentation));
     }
     else if (plugins?.instrument_document_load !== false) {
-      instrumentations.push(new DocumentLoadInstrumentation());
+      instrumentations.push(new CustomDocumentLoadInstrumentation({}, global_instrumentation));
     }
 
     // Instrumentation for user interactions
     if (plugins_config?.instrument_user_interaction?.enabled !== false) {
-      instrumentations.push(new UserInteractionInstrumentation(plugins_config.instrument_user_interaction));
+      instrumentations.push(new CustomUserInteractionInstrumentation(plugins_config.instrument_user_interaction, global_instrumentation));
     }
     else if (plugins?.instrument_user_interaction !== false) {
-      instrumentations.push(new UserInteractionInstrumentation());
+      instrumentations.push(new CustomUserInteractionInstrumentation({}, global_instrumentation));
     }
 
     // XMLHttpRequest Instrumentation for web plugin
     if (plugins_config?.instrument_xhr?.enabled !== false) {
-      instrumentations.push(new XMLHttpRequestInstrumentation(plugins_config.instrument_xhr));
+      instrumentations.push(new CustomXMLHttpRequestInstrumentation(plugins_config.instrument_xhr, global_instrumentation));
     } else if (plugins?.instrument_xhr !== false) {
       instrumentations.push(
-        new XMLHttpRequestInstrumentation({
-          propagateTraceHeaderCorsUrls: corsUrls
-        })
+        new CustomXMLHttpRequestInstrumentation({ propagateTraceHeaderCorsUrls: corsUrls }, global_instrumentation)
       );
     }
 
     // Instrumentation for the fetch API if available
     const isFetchAPISupported = 'fetch' in window;
     if (isFetchAPISupported && plugins_config?.instrument_fetch?.enabled !== false) {
-      instrumentations.push(new FetchInstrumentation(plugins_config.instrument_fetch));
+      instrumentations.push(new CustomFetchInstrumentation(plugins_config.instrument_fetch, global_instrumentation));
     }
     else if (isFetchAPISupported && plugins?.instrument_fetch !== false) {
-      instrumentations.push(new FetchInstrumentation());
+      instrumentations.push(new CustomFetchInstrumentation({}, global_instrumentation));
     }
 
     return instrumentations;

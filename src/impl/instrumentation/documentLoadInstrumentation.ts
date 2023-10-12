@@ -2,26 +2,34 @@
 import { InstrumentationConfig } from '@opentelemetry/instrumentation';
 import { DocumentLoadInstrumentation } from '@opentelemetry/instrumentation-document-load';
 import * as api from '@opentelemetry/api';
-import { captureTraceParentFromPerformanceEntries } from './servertiming';
+import { captureTraceParentFromPerformanceEntries } from '../transaction/servertiming';
 import { PerformanceEntries } from '@opentelemetry/sdk-trace-web';
 import { Span, Tracer } from '@opentelemetry/sdk-trace-base';
-
 import { isTracingSuppressed } from '@opentelemetry/core/build/src/trace/suppress-tracing'
 import { sanitizeAttributes } from '@opentelemetry/core/build/src/common/attributes';
-import { TransactionSpanManager } from './transactionSpanManager';
+import { TransactionSpanManager } from '../transaction/transactionSpanManager';
+import { addUrlParams } from './urlParams';
+import { GlobalInstrumentationConfig, RequestParameterConfig } from '../../types';
+import { Context, SpanOptions } from '@opentelemetry/api';
 
-export interface DocumentLoadServerTimingInstrumentationConfig extends InstrumentationConfig {
-  recordTransaction: boolean;
-  exporterDelay: number;
+export interface CustomDocumentLoadInstrumentationConfig extends InstrumentationConfig {
+  recordTransaction?: boolean;
+  exporterDelay?: number;
 }
 
 /**
  * Patch the Tracer class to use the transaction span as root span
+ * For any additional instrumentation of the startSpan() function, you have to use the
+ * new returned function
+ *
+ * OpenTelemetry version: 0.25.0
+ *
+ * @return new startSpan() function
  */
-export function patchTracer() {
-  // Overwrite startSpan in Tracer class
+export function patchTracerForTransactions(): (name: string, options?: SpanOptions, context?: Context) => (api.Span) {
+  // Overwrite startSpan() in Tracer class
   // Copy of the original startSpan()-function with additional logic inside the function to determine the parentContext
-  Tracer.prototype.startSpan = function (
+  const overwrittenFunction = function (
     name: string,
     options: api.SpanOptions = {},
     context = api.context.active()
@@ -31,6 +39,12 @@ export function patchTracer() {
       api.diag.debug('Instrumentation suppressed, returning Noop Span');
       return api.trace.wrapSpanContext(api.INVALID_SPAN_CONTEXT);
     }
+
+    /*
+      #######################################
+              OVERWRITTEN LOGIC START
+      #######################################
+     */
 
     let parentContext; //getParent(options, context);
     if(options.root) parentContext = undefined;
@@ -48,6 +62,12 @@ export function patchTracer() {
       const transactionSpanId = TransactionSpanManager.getTransactionSpanId();
       if(transactionSpanId) spanId = transactionSpanId;
     }
+
+    /*
+      #######################################
+              OVERWRITTEN LOGIC END
+      #######################################
+     */
 
     let traceId;
     let traceState;
@@ -101,6 +121,9 @@ export function patchTracer() {
     span.setAttributes(Object.assign(attributes, samplingResult.attributes));
     return span;
   }
+
+  Tracer.prototype.startSpan = overwrittenFunction;
+  return overwrittenFunction;
 }
 
 type PerformanceEntriesWithServerTiming = PerformanceEntries & {serverTiming?: ReadonlyArray<({name: string, duration: number, description: string})>}
@@ -109,42 +132,69 @@ type ExposedDocumentLoadSuper = {
   _endSpan(span: api.Span | undefined, performanceName: string, entries: PerformanceEntries): void;
 }
 
-export class DocumentLoadServerTimingInstrumentation extends DocumentLoadInstrumentation {
+export class CustomDocumentLoadInstrumentation extends DocumentLoadInstrumentation {
   readonly component: string = 'document-load-server-timing';
   moduleName = this.component;
 
-  constructor(config: DocumentLoadServerTimingInstrumentationConfig) {
+  // Per default transaction should not be recorded
+  private recordTransaction = false;
+
+  constructor(config: CustomDocumentLoadInstrumentationConfig = {}, globalInstrumentationConfig: GlobalInstrumentationConfig) {
     super(config);
+    const { requestParameter} = globalInstrumentationConfig;
+
+    if(config.recordTransaction)
+      this.recordTransaction = config.recordTransaction;
+
+    //Store original functions in variables
     const exposedSuper = this as any as ExposedDocumentLoadSuper;
     const _superStartSpan: ExposedDocumentLoadSuper['_startSpan'] = exposedSuper._startSpan.bind(this);
     const _superEndSpan: ExposedDocumentLoadSuper['_endSpan'] = exposedSuper._endSpan.bind(this);
 
-    exposedSuper._startSpan = (spanName, performanceName, entries, parentSpan) => {
-      if (!(entries as PerformanceEntriesWithServerTiming).serverTiming && performance.getEntriesByType) {
-        const navEntries = performance.getEntriesByType('navigation');
-        // @ts-ignore
-        if (navEntries[0]?.serverTiming) {
+    if(this.recordTransaction) {
+      //Override function
+      exposedSuper._startSpan = (spanName, performanceName, entries, parentSpan) => {
+        if (!(entries as PerformanceEntriesWithServerTiming).serverTiming && performance.getEntriesByType) {
+          const navEntries = performance.getEntriesByType('navigation');
           // @ts-ignore
-          (entries as PerformanceEntriesWithServerTiming).serverTiming = navEntries[0].serverTiming;
+          if (navEntries[0]?.serverTiming) {
+            // @ts-ignore
+            (entries as PerformanceEntriesWithServerTiming).serverTiming = navEntries[0].serverTiming;
+          }
         }
+        captureTraceParentFromPerformanceEntries(entries);
+
+        const span = _superStartSpan(spanName, performanceName, entries, parentSpan);
+        const exposedSpan = span as any as Span;
+        if(exposedSpan.name == "documentLoad") TransactionSpanManager.setTransactionSpan(span);
+
+        if(span && exposedSpan.name == "documentLoad" && requestParameter?.enabled)
+          addUrlParams(span, location.href, requestParameter.excludeKeysFromBeacons);
+
+        return span;
       }
 
-      captureTraceParentFromPerformanceEntries(entries);
-      const span = _superStartSpan(spanName, performanceName, entries, parentSpan);
-      const exposedSpan = span as any as Span;
-      if(exposedSpan.name == "documentLoad") TransactionSpanManager.setTransactionSpan(span);
+      //Override function
+      exposedSuper._endSpan = (span, performanceName, entries) => {
+        const transactionSpan = TransactionSpanManager.getTransactionSpan();
+        // Don't close transactionSpan
+        // transactionSpan will be closed through "beforeunload"-event
+        if(transactionSpan && transactionSpan == span) return;
 
-      return span;
+        return _superEndSpan(span, performanceName, entries);
+      };
     }
+    else {
+      //Override function
+      exposedSuper._startSpan = (spanName, performanceName, entries, parentSpan) => {
+        const span = _superStartSpan(spanName, performanceName, entries, parentSpan);
+        const exposedSpan = span as any as Span;
 
-    exposedSuper._endSpan = (span, performanceName, entries) => {
+        if(span && exposedSpan.name == "documentLoad" && requestParameter?.enabled)
+          addUrlParams(span, location.href, requestParameter.excludeKeysFromBeacons);
 
-      const transactionSpan = TransactionSpanManager.getTransactionSpan();
-      // Don't close transactionSpan
-      // transactionSpan will be closed through "beforeunload"-event
-      if(transactionSpan && transactionSpan == span) return;
-
-      return _superEndSpan(span, performanceName, entries);
-    };
+        return span;
+      }
+    }
   }
 }
