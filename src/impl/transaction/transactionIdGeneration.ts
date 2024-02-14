@@ -1,11 +1,16 @@
-import { IdGenerator } from '@opentelemetry/core';
+import { IdGenerator } from '@opentelemetry/sdk-trace-base';
 import { TransactionSpanManager } from './transactionSpanManager';
 
 const SPAN_ID_BYTES = 8;
 const TRACE_ID_BYTES = 16;
-const SHARED_BUFFER = Buffer.allocUnsafe(TRACE_ID_BYTES);
+const SHARED_CHAR_CODES_ARRAY = Array(32);
 
-// Copy of RandomIdGenerator (@opentelemetry/core) with additional getTransactionTraceId()-function
+/**
+ * Copy of RandomIdGenerator with additional getTransactionTraceId()-function
+ * Original: https://github.com/open-telemetry/opentelemetry-js/blob/main/packages/opentelemetry-sdk-trace-base/src/platform/browser/RandomIdGenerator.ts
+ * The RandomIdGenerator of the src/platform/node/ package does not work, since 'Buffer' is not defined at runtime
+ */
+
 export class CustomIdGenerator implements IdGenerator {
 
   /**
@@ -37,22 +42,17 @@ export class CustomIdGenerator implements IdGenerator {
 
   getIdGenerator(bytes: number): () => string {
     return function generateId() {
-      for (let i = 0; i < bytes / 4; i++) {
-        // unsigned right shift drops decimal part of the number
-        // it is required because if a number between 2**32 and 2**32 - 1 is generated, an out of range error is thrown by writeUInt32BE
-        SHARED_BUFFER.writeUInt32BE((Math.random() * 2 ** 32) >>> 0, i * 4);
-      }
-
-      // If buffer is all 0, set the last byte to 1 to guarantee a valid w3c id is generated
-      for (let i = 0; i < bytes; i++) {
-        if (SHARED_BUFFER[i] > 0) {
-          break;
-        } else if (i === bytes - 1) {
-          SHARED_BUFFER[bytes - 1] = 1;
+      for (let i = 0; i < bytes * 2; i++) {
+        SHARED_CHAR_CODES_ARRAY[i] = Math.floor(Math.random() * 16) + 48;
+        // valid hex characters in the range 48-57 and 97-102
+        if (SHARED_CHAR_CODES_ARRAY[i] >= 58) {
+          SHARED_CHAR_CODES_ARRAY[i] += 39;
         }
       }
-
-      return SHARED_BUFFER.toString('hex', 0, bytes);
+      return String.fromCharCode.apply(
+        null,
+        SHARED_CHAR_CODES_ARRAY.slice(0, bytes * 2)
+      );
     };
   }
 }

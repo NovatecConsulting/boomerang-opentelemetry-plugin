@@ -1,6 +1,11 @@
-// Also see: https://github.com/signalfx/splunk-otel-js-web/blob/main/packages/web/src/SplunkDocumentLoadInstrumentation.ts
-import { InstrumentationConfig } from '@opentelemetry/instrumentation';
-import { DocumentLoadInstrumentation } from '@opentelemetry/instrumentation-document-load';
+/**
+ * Inject code into the original the OT-DocumentLoadInstrumentation as well as the OT-Tracer
+ * Also see: https://github.com/signalfx/splunk-otel-js-web/blob/main/packages/web/src/SplunkDocumentLoadInstrumentation.ts
+ */
+import {
+  DocumentLoadInstrumentation,
+  DocumentLoadInstrumentationConfig
+} from '@opentelemetry/instrumentation-document-load';
 import * as api from '@opentelemetry/api';
 import { captureTraceParentFromPerformanceEntries } from '../transaction/servertiming';
 import { PerformanceEntries } from '@opentelemetry/sdk-trace-web';
@@ -9,35 +14,46 @@ import { isTracingSuppressed } from '@opentelemetry/core/build/src/trace/suppres
 import { sanitizeAttributes } from '@opentelemetry/core/build/src/common/attributes';
 import { TransactionSpanManager } from '../transaction/transactionSpanManager';
 import { addUrlParams } from './urlParams';
-import { GlobalInstrumentationConfig, RequestParameterConfig } from '../../types';
+import { GlobalInstrumentationConfig } from '../../types';
 import { Context, SpanOptions } from '@opentelemetry/api';
 
-export interface CustomDocumentLoadInstrumentationConfig extends InstrumentationConfig {
+export interface CustomDocumentLoadInstrumentationConfig extends DocumentLoadInstrumentationConfig {
   recordTransaction?: boolean;
   exporterDelay?: number;
 }
 
 /**
- * Patch the Tracer class to use the transaction span as root span
+ * Patch the Tracer class to use the transaction span as root span.
  * For any additional instrumentation of the startSpan() function, you have to use the
  * new returned function
  *
- * OpenTelemetry version: 0.25.0
+ * Original: https://github.com/open-telemetry/opentelemetry-js/blob/main/packages/opentelemetry-sdk-trace-base/src/Tracer.ts
+ * OpenTelemetry version: 0.48.0
  *
  * @return new startSpan() function
  */
 export function patchTracerForTransactions(): (name: string, options?: SpanOptions, context?: Context) => (api.Span) {
-  // Overwrite startSpan() in Tracer class
-  // Copy of the original startSpan()-function with additional logic inside the function to determine the parentContext
+  /**
+   * Overwrite startSpan() in Tracer class
+   * Copy of the original startSpan()-function with additional logic inside the function to determine the parentContext
+   */
   const overwrittenFunction = function (
     name: string,
     options: api.SpanOptions = {},
     context = api.context.active()
   ) {
+    // remove span from context in case a root span is requested via options
+    if (options.root) {
+      context = api.trace.deleteSpan(context);
+    }
+    const parentSpan = api.trace.getSpan(context);
 
     if (isTracingSuppressed(context)) {
       api.diag.debug('Instrumentation suppressed, returning Noop Span');
-      return api.trace.wrapSpanContext(api.INVALID_SPAN_CONTEXT);
+      const nonRecordingSpan = api.trace.wrapSpanContext(
+        api.INVALID_SPAN_CONTEXT
+      );
+      return nonRecordingSpan;
     }
 
     /*
@@ -46,14 +62,15 @@ export function patchTracerForTransactions(): (name: string, options?: SpanOptio
       #######################################
      */
 
-    let parentContext; //getParent(options, context);
-    if(options.root) parentContext = undefined;
-    else parentContext = api.trace.getSpanContext(context);
+    let parentSpanContext = parentSpan?.spanContext();
+    // let parentSpanContext;
+    // if(options.root) parentSpanContext = undefined;
+    // else parentSpanContext = api.trace.getSpanContext(context);
 
-    if(!parentContext) {
+    if(!parentSpanContext) {
       const transactionSpan = TransactionSpanManager.getTransactionSpan();
       if(transactionSpan)
-        parentContext = transactionSpan.spanContext();
+        parentSpanContext = transactionSpan.spanContext();
     }
 
     // Use transaction span-ID for documentLoadSpan, if existing
@@ -72,24 +89,30 @@ export function patchTracerForTransactions(): (name: string, options?: SpanOptio
     let traceId;
     let traceState;
     let parentSpanId;
-    if (!parentContext || !api.trace.isSpanContextValid(parentContext)) {
+    if (
+      !parentSpanContext ||
+      !api.trace.isSpanContextValid(parentSpanContext)
+    ) {
       // New root span.
       traceId = this._idGenerator.generateTraceId();
     } else {
       // New child span.
-      traceId = parentContext.traceId;
-      traceState = parentContext.traceState;
-      parentSpanId = parentContext.spanId;
+      traceId = parentSpanContext.traceId;
+      traceState = parentSpanContext.traceState;
+      parentSpanId = parentSpanContext.spanId;
     }
 
     const spanKind = options.kind ?? api.SpanKind.INTERNAL;
-    const links = options.links ?? [];
+    const links = (options.links ?? []).map(link => {
+      return {
+        context: link.context,
+        attributes: sanitizeAttributes(link.attributes),
+      };
+    });
     const attributes = sanitizeAttributes(options.attributes);
     // make sampling decision
     const samplingResult = this._sampler.shouldSample(
-      options.root
-        ? api.trace.setSpanContext(context, api.INVALID_SPAN_CONTEXT)
-        : context,
+      context,
       traceId,
       name,
       spanKind,
@@ -97,15 +120,26 @@ export function patchTracerForTransactions(): (name: string, options?: SpanOptio
       links
     );
 
+    traceState = samplingResult.traceState ?? traceState;
+
     const traceFlags =
       samplingResult.decision === api.SamplingDecision.RECORD_AND_SAMPLED
         ? api.TraceFlags.SAMPLED
         : api.TraceFlags.NONE;
     const spanContext = { traceId, spanId, traceFlags, traceState };
     if (samplingResult.decision === api.SamplingDecision.NOT_RECORD) {
-      api.diag.debug('Recording is off, propagating context in a non-recording span');
-      return api.trace.wrapSpanContext(spanContext);
+      api.diag.debug(
+        'Recording is off, propagating context in a non-recording span'
+      );
+      const nonRecordingSpan = api.trace.wrapSpanContext(spanContext);
+      return nonRecordingSpan;
     }
+
+    // Set initial span attributes. The attributes object may have been mutated
+    // by the sampler, so we sanitize the merged attributes before setting them.
+    const initAttributes = sanitizeAttributes(
+      Object.assign(attributes, samplingResult.attributes)
+    );
 
     const span = new Span(
       this,
@@ -115,14 +149,16 @@ export function patchTracerForTransactions(): (name: string, options?: SpanOptio
       spanKind,
       parentSpanId,
       links,
-      options.startTime
+      options.startTime,
+      undefined,
+      initAttributes
     );
-    // Set default attributes
-    span.setAttributes(Object.assign(attributes, samplingResult.attributes));
     return span;
   }
 
+  // Assign the function to the Tracer
   Tracer.prototype.startSpan = overwrittenFunction;
+  // Return the function for additional instrumentation, if necessary
   return overwrittenFunction;
 }
 

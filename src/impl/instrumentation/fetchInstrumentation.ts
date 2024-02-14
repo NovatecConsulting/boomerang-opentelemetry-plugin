@@ -1,7 +1,7 @@
 import * as api from '@opentelemetry/api';
 import { addUrlParams } from './urlParams';
 import { FetchInstrumentation, FetchInstrumentationConfig } from '@opentelemetry/instrumentation-fetch';
-import { GlobalInstrumentationConfig, RequestParameterConfig } from '../../types';
+import { GlobalInstrumentationConfig } from '../../types';
 
 type ExposedFetchSuper = {
   _createSpan(url: string, options: Partial<Request | RequestInit>): api.Span | undefined;

@@ -1,21 +1,20 @@
 import { PropagateTraceHeaderCorsUrls } from '@opentelemetry/sdk-trace-web';
-import { CollectorExporterNodeConfigBase } from '@opentelemetry/exporter-collector';
+import { OTLPExporterNodeConfigBase } from '@opentelemetry/otlp-exporter-base';
 import { CustomDocumentLoadInstrumentationConfig } from './impl/instrumentation/documentLoadInstrumentation';
-import { InstrumentationConfig } from "@opentelemetry/instrumentation";
 import { FetchInstrumentationConfig } from '@opentelemetry/instrumentation-fetch';
 import { XMLHttpRequestInstrumentationConfig } from '@opentelemetry/instrumentation-xml-http-request';
+import { UserInteractionInstrumentationConfig } from '@opentelemetry/instrumentation-user-interaction';
 
 export interface PluginProperties {
   samplingRate: number;
   corsUrls: PropagateTraceHeaderCorsUrls;
-  collectorConfiguration: CollectorExporterNodeConfigBase | undefined;
+  collectorConfiguration: OTLPExporterNodeConfigBase | undefined;
   consoleOnly: boolean;
   plugins: OTPluginProperties;
   plugins_config: OTPluginConfig;
   global_instrumentation: GlobalInstrumentationConfig;
   exporter: OTExportProperties;
   commonAttributes: StringMap;
-  prototypeExporterPatch: boolean;
   serviceName: string | (() => string);
   propagationHeader: PropagationHeader;
 }
@@ -41,7 +40,7 @@ export interface OTPluginConfig {
   instrument_fetch: FetchInstrumentationConfig;
   instrument_xhr: XMLHttpRequestInstrumentationConfig;
   instrument_document_load: CustomDocumentLoadInstrumentationConfig;
-  instrument_user_interaction: InstrumentationConfig;
+  instrument_user_interaction: UserInteractionInstrumentationConfig;
 }
 
 export interface GlobalInstrumentationConfig {

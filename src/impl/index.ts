@@ -1,20 +1,16 @@
 import api, { context, trace, Span, SpanOptions, Context } from '@opentelemetry/api';
-import {
-  AlwaysOnSampler,
-  AlwaysOffSampler,
-  TraceIdRatioBasedSampler,
-  HttpTraceContextPropagator,
-} from '@opentelemetry/core';
+import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import {
   WebTracerConfig,
   WebTracerProvider,
+  AlwaysOnSampler,
+  AlwaysOffSampler,
+  TraceIdRatioBasedSampler
 } from '@opentelemetry/sdk-trace-web';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { ZoneContextManager } from '@opentelemetry/context-zone-peer-dep';
-import {
-  CollectorTraceExporter,
-  CollectorExporterNodeConfigBase,
-} from '@opentelemetry/exporter-collector';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import { OTLPExporterNodeConfigBase } from '@opentelemetry/otlp-exporter-base';
 import {
   ConsoleSpanExporter,
   SimpleSpanProcessor,
@@ -25,7 +21,6 @@ import { Resource } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { B3InjectEncoding, B3Propagator } from '@opentelemetry/propagator-b3';
 import { PluginProperties, ContextFunction, PropagationHeader } from '../types';
-import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
 import { MultiSpanProcessor, CustomSpanProcessor } from './spanProcessing';
 import {
   CustomDocumentLoadInstrumentation,
@@ -58,28 +53,32 @@ export default class OpenTelemetryTracingImpl {
       instrument_fetch: {
         enabled: false,
         clearTimingResources: false,
-        path: "",
-        applyCustomAttributesOnSpan: null, //(span: Span, request: Request) => { },
+        applyCustomAttributesOnSpan: null, //(span: Span, request: Request) => { }
         ignoreUrls: [],
-        propagateTraceHeaderCorsUrls: []
+        propagateTraceHeaderCorsUrls: [],
+        ignoreNetworkEvents: false
       },
       instrument_xhr: {
         enabled: false,
-        path: "",
-        applyCustomAttributesOnSpan: null, // (span: Span, xhr: XMLHttpRequest) => { },
+        applyCustomAttributesOnSpan: null, // (span: Span, xhr: XMLHttpRequest) => { }
         propagateTraceHeaderCorsUrls: [],
         ignoreUrls: [],
         clearTimingResources: false
       },
       instrument_document_load: {
         enabled: false,
-        path: "",
+        applyCustomAttributesOnSpan: {
+          documentLoad: null, // span => { }
+          documentFetch: null, // span => {  }
+          resourceFetch: null, // (span, resource) => { }
+        },
         recordTransaction: false,
         exporterDelay: 20
       },
       instrument_user_interaction: {
         enabled: false,
-        path: "",
+        eventNames: [],
+        shouldPreventSpanCreation: null // eventType => { }
       },
     },
     global_instrumentation: {
@@ -95,9 +94,8 @@ export default class OpenTelemetryTracingImpl {
       exportTimeoutMillis: 30000,
     },
     commonAttributes: {},
-    prototypeExporterPatch: false,
     serviceName: undefined,
-    propagationHeader: PropagationHeader.TRACE_CONTEXT,
+    propagationHeader: PropagationHeader.TRACE_CONTEXT
   };
 
   private props: PluginProperties = {
@@ -149,20 +147,22 @@ export default class OpenTelemetryTracingImpl {
     // use OT collector if logging to console is not enabled
     if (!this.props.consoleOnly) {
       // register opentelemetry collector exporter
-      const collectorOptions: CollectorExporterNodeConfigBase = {
+      const collectorOptions: OTLPExporterNodeConfigBase = {
         url: this.collectorUrlFromBeaconUrl(),
         headers: {}, // an optional object containing custom headers to be sent with each request
         concurrencyLimit: 10, // an optional limit on pending requests
         ...this.props.collectorConfiguration,
       };
 
-      const exporter = new CollectorTraceExporter(collectorOptions);
+      const exporter = new OTLPTraceExporter(collectorOptions);
 
-      // patches the collector-export in order to be compatible with Prototype
-      if (this.props.prototypeExporterPatch) {
-        patchExporter(exporter);
-        patchExporterClass();
-      }
+      // Patch is no longer necessary, since the new exporter does no longer use Array.from()
+      // TODO Remove patch after tested in production
+      // patches the collector-export in order to be compatible with Prototype.
+      // if (this.props.prototypeExporterPatch) {
+      //   patchExporter(exporter);
+      //   patchExporterClass();
+      // }
 
       const batchSpanProcessor = new BatchSpanProcessor(exporter, {
         ...this.defaultProperties.exporter,
@@ -192,7 +192,7 @@ export default class OpenTelemetryTracingImpl {
       window.addEventListener("beforeunload", (event) => {
         TransactionSpanManager.getTransactionSpan().end();
         this.traceProvider.forceFlush();
-        //Synchronous blocking is necessary, so the span can be exported successfully
+        // Synchronous blocking is necessary, so the span can be exported successfully
         this.sleep(delay);
       });
     }
@@ -252,7 +252,7 @@ export default class OpenTelemetryTracingImpl {
         });
       case PropagationHeader.TRACE_CONTEXT:
       default:
-        return new HttpTraceContextPropagator();
+        return new W3CTraceContextPropagator();
     }
   };
 
