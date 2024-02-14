@@ -1,11 +1,16 @@
-import { IdGenerator } from '@opentelemetry/core';
+import { IdGenerator } from '@opentelemetry/sdk-trace-base';
 import { TransactionSpanManager } from './transactionSpanManager';
 
 const SPAN_ID_BYTES = 8;
 const TRACE_ID_BYTES = 16;
 const SHARED_CHAR_CODES_ARRAY = Array(32);
 
-// Copy of RandomIdGenerator (@opentelemetry/core) with additional getTransactionTraceId()-function
+/**
+ * Copy of RandomIdGenerator with additional getTransactionTraceId()-function
+ * Original: https://github.com/open-telemetry/opentelemetry-js/blob/main/packages/opentelemetry-sdk-trace-base/src/platform/browser/RandomIdGenerator.ts
+ * The RandomIdGenerator of the src/platform/node/ package does not work, since 'Buffer' is not defined at runtime
+ */
+
 export class CustomIdGenerator implements IdGenerator {
 
   /**

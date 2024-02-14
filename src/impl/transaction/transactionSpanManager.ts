@@ -6,7 +6,7 @@ import { CustomIdGenerator } from './transactionIdGeneration';
  */
 export class TransactionSpanManager {
 
-  private static readonly openTelemetryVersion = "0.25.0";
+  private static readonly openTelemetryVersion = "0.48.0";
   private static readonly documentLoadTracerName = "@opentelemetry/instrumentation-document-load";
 
   // Store trace-id, before transactionSpan was created
