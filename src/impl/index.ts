@@ -23,7 +23,6 @@ import { Resource } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { B3InjectEncoding, B3Propagator } from '@opentelemetry/propagator-b3';
 import { PluginProperties, ContextFunction, PropagationHeader } from '../types';
-// import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
 import { MultiSpanProcessor, CustomSpanProcessor } from './spanProcessing';
 import {
   CustomDocumentLoadInstrumentation,
@@ -56,28 +55,32 @@ export default class OpenTelemetryTracingImpl {
       instrument_fetch: {
         enabled: false,
         clearTimingResources: false,
-        path: "",
-        applyCustomAttributesOnSpan: null, //(span: Span, request: Request) => { },
+        applyCustomAttributesOnSpan: null, //(span: Span, request: Request) => { }
         ignoreUrls: [],
-        propagateTraceHeaderCorsUrls: []
+        propagateTraceHeaderCorsUrls: [],
+        ignoreNetworkEvents: false
       },
       instrument_xhr: {
         enabled: false,
-        path: "",
-        applyCustomAttributesOnSpan: null, // (span: Span, xhr: XMLHttpRequest) => { },
+        applyCustomAttributesOnSpan: null, // (span: Span, xhr: XMLHttpRequest) => { }
         propagateTraceHeaderCorsUrls: [],
         ignoreUrls: [],
         clearTimingResources: false
       },
       instrument_document_load: {
         enabled: false,
-        path: "",
+        applyCustomAttributesOnSpan: {
+          documentLoad: null, // span => { }
+          documentFetch: null, // span => {  }
+          resourceFetch: null, // (span, resource) => { }
+        },
         recordTransaction: false,
         exporterDelay: 20
       },
       instrument_user_interaction: {
         enabled: false,
-        path: "",
+        eventNames: [],
+        shouldPreventSpanCreation: null // eventType => { }
       },
     },
     global_instrumentation: {

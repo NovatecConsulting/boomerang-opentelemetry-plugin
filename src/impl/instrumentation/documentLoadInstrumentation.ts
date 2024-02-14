@@ -1,6 +1,8 @@
 // Also see: https://github.com/signalfx/splunk-otel-js-web/blob/main/packages/web/src/SplunkDocumentLoadInstrumentation.ts
-import { InstrumentationConfig } from '@opentelemetry/instrumentation';
-import { DocumentLoadInstrumentation } from '@opentelemetry/instrumentation-document-load';
+import {
+  DocumentLoadInstrumentation,
+  DocumentLoadInstrumentationConfig
+} from '@opentelemetry/instrumentation-document-load';
 import * as api from '@opentelemetry/api';
 import { captureTraceParentFromPerformanceEntries } from '../transaction/servertiming';
 import { PerformanceEntries } from '@opentelemetry/sdk-trace-web';
@@ -9,10 +11,10 @@ import { isTracingSuppressed } from '@opentelemetry/core/build/src/trace/suppres
 import { sanitizeAttributes } from '@opentelemetry/core/build/src/common/attributes';
 import { TransactionSpanManager } from '../transaction/transactionSpanManager';
 import { addUrlParams } from './urlParams';
-import { GlobalInstrumentationConfig, RequestParameterConfig } from '../../types';
+import { GlobalInstrumentationConfig } from '../../types';
 import { Context, SpanOptions } from '@opentelemetry/api';
 
-export interface CustomDocumentLoadInstrumentationConfig extends InstrumentationConfig {
+export interface CustomDocumentLoadInstrumentationConfig extends DocumentLoadInstrumentationConfig {
   recordTransaction?: boolean;
   exporterDelay?: number;
 }
