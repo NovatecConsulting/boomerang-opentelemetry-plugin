@@ -1,7 +1,6 @@
 import * as api from '@opentelemetry/api';
 import { addUrlParams } from './urlParams';
-import { FetchInstrumentation, FetchInstrumentationConfig } from '@opentelemetry/instrumentation-fetch';
-import { GlobalInstrumentationConfig, RequestParameterConfig } from '../../types';
+import { GlobalInstrumentationConfig } from '../../types';
 import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-user-interaction';
 import { InstrumentationConfig } from '@opentelemetry/instrumentation';
 

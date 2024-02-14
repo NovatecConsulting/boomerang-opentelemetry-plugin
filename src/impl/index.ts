@@ -97,7 +97,7 @@ export default class OpenTelemetryTracingImpl {
     },
     commonAttributes: {},
     serviceName: undefined,
-    propagationHeader: PropagationHeader.TRACE_CONTEXT,
+    propagationHeader: PropagationHeader.TRACE_CONTEXT
   };
 
   private props: PluginProperties = {
@@ -194,7 +194,7 @@ export default class OpenTelemetryTracingImpl {
       window.addEventListener("beforeunload", (event) => {
         TransactionSpanManager.getTransactionSpan().end();
         this.traceProvider.forceFlush();
-        //Synchronous blocking is necessary, so the span can be exported successfully
+        // Synchronous blocking is necessary, so the span can be exported successfully
         this.sleep(delay);
       });
     }

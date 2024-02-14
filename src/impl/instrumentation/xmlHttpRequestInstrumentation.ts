@@ -4,7 +4,7 @@ import {
   XMLHttpRequestInstrumentationConfig
 } from '@opentelemetry/instrumentation-xml-http-request';
 import { addUrlParams } from './urlParams';
-import { GlobalInstrumentationConfig, RequestParameterConfig } from '../../types';
+import { GlobalInstrumentationConfig } from '../../types';
 
 type ExposedXHRSuper = {
   _createSpan(xhr: XMLHttpRequest, url: string, method: string): api.Span | undefined;
