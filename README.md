@@ -124,7 +124,6 @@ BOOMR.init({
         "stage": "prod"
     },
     serviceName: () => BOOMR.getVar("page_name") || "unknown_service", // an optional service name for the spans
-    prototypeExporterPatch: false // patches the OpenTelemetry collector-span-exporter in case the Prototype framework is used
     propagationHeader: "TRACE_CONTEXT",
   }
 });
