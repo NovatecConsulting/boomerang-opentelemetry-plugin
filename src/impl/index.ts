@@ -3,7 +3,7 @@ import {
   AlwaysOnSampler,
   AlwaysOffSampler,
   TraceIdRatioBasedSampler,
-  HttpTraceContextPropagator,
+  W3CTraceContextPropagator,
 } from '@opentelemetry/core';
 import {
   WebTracerConfig,
@@ -251,7 +251,7 @@ export default class OpenTelemetryTracingImpl {
         });
       case PropagationHeader.TRACE_CONTEXT:
       default:
-        return new HttpTraceContextPropagator();
+        return new W3CTraceContextPropagator();
     }
   };
 

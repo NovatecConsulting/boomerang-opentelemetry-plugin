@@ -1163,12 +1163,12 @@
     "@opentelemetry/sdk-metrics" "1.21.0"
     "@opentelemetry/sdk-trace-base" "1.21.0"
 
-"@opentelemetry/propagator-b3@^0.25.0":
-  version "0.25.0"
-  resolved "https://registry.yarnpkg.com/@opentelemetry/propagator-b3/-/propagator-b3-0.25.0.tgz#2b45966538ef2643c956152df315c0418b5c2302"
-  integrity sha512-FMdy4YOZO56w2+pxsXWARWa+2F8N7fHW+ZfSFB937Q/oyOZ/2dhj3Ep12gqIH/qV6+kAblgiqOAMyOcnwBCUog==
+"@opentelemetry/propagator-b3@^1.21.0":
+  version "1.21.0"
+  resolved "https://registry.yarnpkg.com/@opentelemetry/propagator-b3/-/propagator-b3-1.21.0.tgz#72fadc4a07afb2c83f0830b8a06071e0361eacb2"
+  integrity sha512-3ZTobj2VDIOzLsIvvYCdpw6tunxUVElPxDvog9lS49YX4hohHeD84A8u9Ns/6UYUcaN5GSoEf891lzhcBFiOLA==
   dependencies:
-    "@opentelemetry/core" "0.25.0"
+    "@opentelemetry/core" "1.21.0"
 
 "@opentelemetry/resources@0.25.0":
   version "0.25.0"
