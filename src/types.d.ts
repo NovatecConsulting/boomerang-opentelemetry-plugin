@@ -15,7 +15,6 @@ export interface PluginProperties {
   global_instrumentation: GlobalInstrumentationConfig;
   exporter: OTExportProperties;
   commonAttributes: StringMap;
-  prototypeExporterPatch: boolean;
   serviceName: string | (() => string);
   propagationHeader: PropagationHeader;
 }

@@ -96,7 +96,6 @@ export default class OpenTelemetryTracingImpl {
       exportTimeoutMillis: 30000,
     },
     commonAttributes: {},
-    prototypeExporterPatch: false,
     serviceName: undefined,
     propagationHeader: PropagationHeader.TRACE_CONTEXT,
   };
@@ -159,12 +158,13 @@ export default class OpenTelemetryTracingImpl {
 
       const exporter = new OTLPTraceExporter(collectorOptions);
 
-      // patches the collector-export in order to be compatible with Prototype.
       // Patch is no longer necessary, since the new exporter does no longer use Array.from()
-      if (this.props.prototypeExporterPatch) {
-        // patchExporter(exporter);
-        // patchExporterClass();
-      }
+      // TODO Remove patch after tested in production
+      // patches the collector-export in order to be compatible with Prototype.
+      // if (this.props.prototypeExporterPatch) {
+      //   patchExporter(exporter);
+      //   patchExporterClass();
+      // }
 
       const batchSpanProcessor = new BatchSpanProcessor(exporter, {
         ...this.defaultProperties.exporter,
