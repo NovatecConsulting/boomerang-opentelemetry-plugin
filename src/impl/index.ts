@@ -1,13 +1,11 @@
 import api, { context, trace, Span, SpanOptions, Context } from '@opentelemetry/api';
-import {
-  AlwaysOnSampler,
-  AlwaysOffSampler,
-  TraceIdRatioBasedSampler,
-  W3CTraceContextPropagator,
-} from '@opentelemetry/core';
+import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import {
   WebTracerConfig,
   WebTracerProvider,
+  AlwaysOnSampler,
+  AlwaysOffSampler,
+  TraceIdRatioBasedSampler
 } from '@opentelemetry/sdk-trace-web';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { ZoneContextManager } from '@opentelemetry/context-zone-peer-dep';
