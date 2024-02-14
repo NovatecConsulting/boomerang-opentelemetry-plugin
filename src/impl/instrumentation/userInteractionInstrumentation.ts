@@ -1,8 +1,10 @@
 import * as api from '@opentelemetry/api';
 import { addUrlParams } from './urlParams';
 import { GlobalInstrumentationConfig } from '../../types';
-import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-user-interaction';
-import { InstrumentationConfig } from '@opentelemetry/instrumentation';
+import {
+  UserInteractionInstrumentation,
+  UserInteractionInstrumentationConfig
+} from '@opentelemetry/instrumentation-user-interaction';
 
 type ExposedUserInteractionSuper = {
   _createSpan(element: EventTarget | null | undefined, eventName: string, parentSpan?: api.Span | undefined): api.Span | undefined;
@@ -10,7 +12,7 @@ type ExposedUserInteractionSuper = {
 
 export class CustomUserInteractionInstrumentation extends UserInteractionInstrumentation {
 
-  constructor(config: InstrumentationConfig = {}, globalInstrumentationConfig: GlobalInstrumentationConfig) {
+  constructor(config: UserInteractionInstrumentationConfig = {}, globalInstrumentationConfig: GlobalInstrumentationConfig) {
     super(config);
     const { requestParameter} = globalInstrumentationConfig;
 
