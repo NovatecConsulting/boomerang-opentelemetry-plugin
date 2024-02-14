@@ -11,10 +11,8 @@ import {
 } from '@opentelemetry/sdk-trace-web';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { ZoneContextManager } from '@opentelemetry/context-zone-peer-dep';
-import {
-  CollectorTraceExporter,
-  CollectorExporterNodeConfigBase,
-} from '@opentelemetry/exporter-collector';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import { OTLPExporterNodeConfigBase } from '@opentelemetry/otlp-exporter-base';
 import {
   ConsoleSpanExporter,
   SimpleSpanProcessor,
@@ -25,7 +23,7 @@ import { Resource } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { B3InjectEncoding, B3Propagator } from '@opentelemetry/propagator-b3';
 import { PluginProperties, ContextFunction, PropagationHeader } from '../types';
-import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
+// import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
 import { MultiSpanProcessor, CustomSpanProcessor } from './spanProcessing';
 import {
   CustomDocumentLoadInstrumentation,
@@ -149,19 +147,20 @@ export default class OpenTelemetryTracingImpl {
     // use OT collector if logging to console is not enabled
     if (!this.props.consoleOnly) {
       // register opentelemetry collector exporter
-      const collectorOptions: CollectorExporterNodeConfigBase = {
+      const collectorOptions: OTLPExporterNodeConfigBase = {
         url: this.collectorUrlFromBeaconUrl(),
         headers: {}, // an optional object containing custom headers to be sent with each request
         concurrencyLimit: 10, // an optional limit on pending requests
         ...this.props.collectorConfiguration,
       };
 
-      const exporter = new CollectorTraceExporter(collectorOptions);
+      const exporter = new OTLPTraceExporter(collectorOptions);
 
-      // patches the collector-export in order to be compatible with Prototype
+      // patches the collector-export in order to be compatible with Prototype.
+      // Patch is no longer necessary, since the new exporter does no longer use Array.from()
       if (this.props.prototypeExporterPatch) {
-        patchExporter(exporter);
-        patchExporterClass();
+        // patchExporter(exporter);
+        // patchExporterClass();
       }
 
       const batchSpanProcessor = new BatchSpanProcessor(exporter, {

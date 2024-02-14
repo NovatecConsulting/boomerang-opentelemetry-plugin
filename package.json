@@ -1,6 +1,6 @@
 {
   "name": "boomerang-opentelemetry-plugin",
-  "version": "0.25.0-9",
+  "version": "0.48.0-1",
   "description": "This is a Boomerang plugin for collecting spans using the OpenTelemetry framework and exporting them, e.g., to an OpenTelemetry collector.",
   "repository": "https://github.com/NovatecConsulting/boomerang-opentelemetry-plugin",
   "license": "Apache-2.0",
@@ -15,13 +15,13 @@
   "dependencies": {
     "@opentelemetry/api": "^1.7.0",
     "@opentelemetry/context-zone-peer-dep": "0.25.0",
-    "@opentelemetry/exporter-collector": "^0.25.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.48.0",
     "@opentelemetry/instrumentation-document-load": "^0.25.0",
     "@opentelemetry/instrumentation-fetch": "^0.25.0",
     "@opentelemetry/instrumentation-user-interaction": "^0.25.0",
     "@opentelemetry/instrumentation-xml-http-request": "^0.25.0",
     "@opentelemetry/propagator-b3": "^0.25.0",
-    "@opentelemetry/sdk-trace-web": "^0.25.0",
+    "@opentelemetry/sdk-trace-web": "^1.21.0",
     "regenerator-runtime": "^0.14.1",
     "zone.js": "^0.11.4"
   },
