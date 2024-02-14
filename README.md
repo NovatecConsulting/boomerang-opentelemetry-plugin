@@ -1,8 +1,9 @@
 # Boomerang-OpenTelemetry Plugin
 
-![](https://img.shields.io/badge/OpenTelemetry%20Version-0.25.0-success)
+![](https://img.shields.io/badge/OpenTelemetry%20Version-0.48.0-success)
 
-This is a [Boomerang plugin](https://github.com/akamai/boomerang) for collecting spans using the [OpenTelemetry](https://opentelemetry.io/) framework and exporting them, e.g., to an OpenTelemetry collector.
+This is a [Boomerang plugin](https://github.com/akamai/boomerang) for collecting spans using the [OpenTelemetry](https://opentelemetry.io/) 
+framework and exporting them, e.g., to an OpenTelemetry collector.
 The plugin is based on the [opentelemetry-js](https://github.com/open-telemetry/opentelemetry-js) implementation.
 The plugin version always corresponds to the opentelemetry-js version that's being used internally.
 
@@ -11,18 +12,20 @@ The plugin version always corresponds to the opentelemetry-js version that's bei
 
 ## Using with Angular
 
-This module provides Zone Context Manager with a dependency for zone-js for Web applications. If you use Angular you already have the zone-js. In this case, this might case some problems and you should use a custom build of this library where zone-js has been removed.
+This module provides Zone Context Manager with a dependency for zone-js for Web applications. 
+If you use Angular you already have the zone-js. In this case, this might case some problems and you should use a 
+custom build of this library where zone-js has been removed.
 
 ## Features
 
 Currently implemented features:
 
-* Automatic instrumentation of the asynhrounous XMLHttpRequest API and Fetch API, including B3 header propagation. [More details ↗](https://www.npmjs.com/package/@opentelemetry/instrumentation-xml-http-request)
+* Automatic instrumentation of the asynchronous XMLHttpRequest API and Fetch API, including B3 header propagation. [More details ↗](https://www.npmjs.com/package/@opentelemetry/instrumentation-xml-http-request)
 * Automatic tracing of the initial page load including resource timings.
 * Automatic instrumentation of user interactions.
 * Automatic local context propagation using _Zone Context Manager_. [More details ↗](https://www.npmjs.com/package/@opentelemetry/context-zone)
 * Exporting collected spans to an OpenTelemetry collector.
-* Providing access to the OpenTelemtry Tracing-API for manual instrumentation.
+* Providing access to the OpenTelemetry Tracing-API for manual instrumentation.
 * Adding global variables to spans during runtime via _addVarToSpans()_
 * Tracing of the whole transaction with the document load span as root span
 
@@ -30,17 +33,20 @@ Currently implemented features:
 
 A list of OpenTelemetry instrumentation and non-instrumentation plugins that are currently included in this Boomerang plugin:
 
-* [@opentelemetry/exporter-collector](https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-exporter-collector)
-* [@opentelemetry/instrumentation-xml-http-request](https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-instrumentation-xml-http-request)
-* [@opentelemetry/instrumentation-fetch](https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-instrumentation-fetch)
+* [@opentelemetry/exporter-trace-otlp-http](https://github.com/open-telemetry/opentelemetry-js/tree/main/experimental/packages/exporter-trace-otlp-http)
+* [@opentelemetry/instrumentation-xml-http-request](https://github.com/open-telemetry/opentelemetry-js/tree/main/experimental/packages/opentelemetry-instrumentation-xml-http-request)
+* [@opentelemetry/instrumentation-fetch](https://github.com/open-telemetry/opentelemetry-js/tree/main/experimental/packages/opentelemetry-instrumentation-fetch)
 * [@opentelemetry/instrumentation-document-load](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-document-load)
 * [@opentelemetry/instrumentation-user-interaction](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-user-interaction)
 
 ## Setup
 
-The basic setup requires only to include the `boomerang-opentelemetry.js` file to the list of the boomerang plugins to run. This setup works out-of-the-box with the  [inspectit-ocelot EUM server](https://github.com/inspectIT/inspectit-ocelot-eum-server).
+The basic setup requires only to include the `boomerang-opentelemetry.js` file to the list of the boomerang plugins to run. 
+This setup works out-of-the-box with the [inspectit-ocelot EUM server](https://github.com/inspectIT/inspectit-ocelot-eum-server).
 
-By default, collected spans will be sent to an URL relative to the defined `beacon_url` Boomerang property in case your `beacon_url` ends with `/beacon`. In this case, an endpoint for spans is used, where `/beacon` is replaced by `/spans`. However, if you use different URLs, the collector URL must be configured accordingly.
+By default, collected spans will be sent to a URL relative to the defined `beacon_url` Boomerang property in case 
+your `beacon_url` ends with `/beacon`. In this case, an endpoint for spans is used, where `/beacon` is replaced by `/spans`. 
+However, if you use different URLs, the collector URL must be configured accordingly.
 
 ## Configuration
 
@@ -64,28 +70,32 @@ BOOMR.init({
       instrument_fetch: {
         enabled: false,
         clearTimingResources: false,
-        path: "",
-        applyCustomAttributesOnSpan: null, //A method with the following structure: (span: Span, request: Request) => { },
+        applyCustomAttributesOnSpan: null, //A method with the following structure: (span: Span, request: Request) => { }
         ignoreUrls: [],
-        propagateTraceHeaderCorsUrls: []
+        propagateTraceHeaderCorsUrls: [],
+        ignoreNetworkEvents: false
       },
       instrument_xhr: {
         enabled: false,
-        path: "",
-        applyCustomAttributesOnSpan: null, //A method with the following structure: (span: Span, xhr: XMLHttpRequest) => { },
+        applyCustomAttributesOnSpan: null, //A method with the following structure: (span: Span, xhr: XMLHttpRequest) => { }
         propagateTraceHeaderCorsUrls: [],
         ignoreUrls: [],
         clearTimingResources: false,
       },
       instrument_document_load: {
         enabled: false,
-        path: "",
+        applyCustomAttributesOnSpan: {
+          documentLoad: null, //A method with the following structure: (span) => { }
+          documentFetch: null, //A method with the following structure: (span) => { }
+          resourceFetch: null, //A method with the following structure: (span, resource) => { }
+        },
         recordTransaction: false, //If true, the transaction will be traced with the document load span as root span
         exporterDelay: 20 // Delay to allow the exporter to export the transaction span before page unload
       },
       instrument_user_interaction: {
         enabled: false,
-        path: "",
+        eventNames: [],
+        shouldPreventSpanCreation: null //A method with the following structure: (eventType, element, span) => { }
       },
     },
     // Use these options only for legacy configuration. Instead using plugins_config is recommended.
@@ -125,13 +135,13 @@ Available options are:
 |-------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---|
 | `samplingRate`                            | Sampling rate to use when collecting spans. Value must be between `0` and `1`.                                                                                                                                                                                                                                                                                   | `1` |
 | `corsUrls`                                | Array of CORS URLs to take into consideration when propagating trace information. By default, CORS URLs are excluded from the propagation.                                                                                                                                                                                                                       | `[]` |
-| `collectorConfiguration`                  | Object that defines the OpenTelemetry collector configuration, like the URL to send spans to. See [CollectorExporterNodeConfigBase](https://www.npmjs.com/package/@opentelemetry/exporter-collector) interface for all options.                                                                                                                                  | `undefined` |
+| `collectorConfiguration`                  | Object that defines the OpenTelemetry collector configuration, like the URL to send spans to. See [OTLPExporterNodeConfigBase](https://www.npmjs.com/package/@opentelemetry/exporter-trace-otlp-http) interface for all options.                                                                                                                                 | `undefined` |
 | `consoleOnly`                             | If `true` spans will be logged on the console and not sent to the collector endpoint.                                                                                                                                                                                                                                                                            | `false` |
 | `plugins`                                 | Object for enabling and disabling OpenTelemetry plugins.                                                                                                                                                                                                                                                                                                         |  |
-| `plugins.instrument_fetch`                | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-instrumentation-fetch) for insturmentation of the fetch API. This will only be used in case the `fetch` API exists.                                                                                                                      | `true` |
-| `plugins.instrument_xhr`                  | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-instrumentation-xml-http-request) for insturmentation of the XMLHttpRequest API.                                                                                                                                                         | `true` |
-| `plugins.instrument_document_load`        | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-document-load) for insturmentation of the document load (initial request).                                                                                                                                    | `true` |
-| `plugins.instrument_user_interaction`     | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-user-interaction) for insturmentation of user interactions.                                                                                                                                                   | `true` |
+| `plugins.instrument_fetch`                | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js/tree/main/experimental/packages/opentelemetry-instrumentation-fetch) for instrumentation of the fetch API. This will only be used in case the `fetch` API exists.                                                                                                         | `true` |
+| `plugins.instrument_xhr`                  | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js/tree/main/experimental/packages/opentelemetry-instrumentation-xml-http-request) for instrumentation of the XMLHttpRequest API.                                                                                                                                            | `true` |
+| `plugins.instrument_document_load`        | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-document-load) for instrumentation of the document load (initial request).                                                                                                                                    | `true` |
+| `plugins.instrument_user_interaction`     | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-user-interaction) for instrumentation of user interactions.                                                                                                                                                   | `true` |
 | `global_instrumentation`                  | Object for configuring additional instrumentations, which will be applied to every OpenTelemetry plugin.                                                                                                                                                                                                                                                         ||
 | `global_instrumentation.requestParameter` | If enabled, existing request parameters will be added as attributes to spans and, if not excluded, will be added to the corresponding beacon as well.                                                                                                                                                                                                            ||
 | `exporter`                                | Object for configuring the span exporter. Only used if `consoleOnly` is not enabled.                                                                                                                                                                                                                                                                             ||
@@ -141,7 +151,6 @@ Available options are:
 | `exporter.exportTimeoutMillis`            | How long the export can run before it is cancelled.                                                                                                                                                                                                                                                                                                              | `30000` |
 | `commonAttributes`                        | An Object defining common span attributes which will be added to each recorded span.                                                                                                                                                                                                                                                                             | `{}` |
 | `serviceName`                             | A `string` or function which can be used to set the spans' service name. A function can be defined for dynamically providing the service name, e.g. based on Boomerang values.                                                                                                                                                                                   | `undefined` |
-| `prototypeExporterPatch`                  | Patches the OpenTelemetry collector-span-exporter, so it is compatible with the Prototype framework. This is only necessary and should only be activated, when the Prototype framework is used. [For more information see the linked file](https://github.com/NovatecConsulting/boomerang-opentelemetry-plugin/blob/master/src/impl/patchCollectorPrototype.ts). | `false` |
 | `propagationHeader`                       | Defines the format of the context propagation header. Available formats: `TRACE_CONTEXT`, `B3_SINGLE`, `B3_MULTI`                                                                                                                                                                                                                                                | `TRACE_CONTEXT` |
 
 ## Manual Instrumentation
