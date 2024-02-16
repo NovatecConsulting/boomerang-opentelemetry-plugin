@@ -38,7 +38,7 @@ A list of OpenTelemetry instrumentation and non-instrumentation plugins that are
 * [@opentelemetry/instrumentation-fetch](https://github.com/open-telemetry/opentelemetry-js/tree/main/experimental/packages/opentelemetry-instrumentation-fetch)
 * [@opentelemetry/instrumentation-document-load](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-document-load)
 * [@opentelemetry/instrumentation-user-interaction](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-user-interaction)
-* [@opentelemetry/opentelemetry-browser-detector](https://github.com/open-telemetry/opentelemetry-js/tree/main/experimental/packages/opentelemetry-browser-detector)
+* [@opentelemetry/browser-detector](https://github.com/open-telemetry/opentelemetry-js/tree/main/experimental/packages/opentelemetry-browser-detector)
 
 ## Setup
 
@@ -143,7 +143,7 @@ Available options are:
 | `plugins.instrument_xhr`                  | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js/tree/main/experimental/packages/opentelemetry-instrumentation-xml-http-request) for instrumentation of the XMLHttpRequest API.                                    | `true`          |
 | `plugins.instrument_document_load`        | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-document-load) for instrumentation of the document load (initial request).                            | `true`          |
 | `plugins.instrument_user_interaction`     | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/plugins/web/opentelemetry-instrumentation-user-interaction) for instrumentation of user interactions.                                           | `true`          |
-| `plugins.browser_detector`                | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js/tree/main/experimental/packages/opentelemetry-browser-detector) detecting browser attributes.                                                                     | `true`          |
+| `plugins.browser_detector`                | Enabling the [OpenTelemetry plugin](https://github.com/open-telemetry/opentelemetry-js/tree/main/experimental/packages/opentelemetry-browser-detector) for detecting browser attributes.                                                                 | `true`          |
 | `global_instrumentation`                  | Object for configuring additional instrumentations, which will be applied to every OpenTelemetry plugin.                                                                                                                                                 |                 |
 | `global_instrumentation.requestParameter` | If enabled, existing request parameters will be added as attributes to spans and, if not excluded, will be added to the corresponding beacon as well.                                                                                                    |                 |
 | `exporter`                                | Object for configuring the span exporter. Only used if `consoleOnly` is not enabled.                                                                                                                                                                     |                 |
