@@ -34,6 +34,7 @@ export interface OTPluginProperties {
   instrument_xhr: boolean;
   instrument_document_load: boolean;
   instrument_user_interaction: boolean;
+  browser_detector: boolean;
 }
 
 export interface OTPluginConfig {

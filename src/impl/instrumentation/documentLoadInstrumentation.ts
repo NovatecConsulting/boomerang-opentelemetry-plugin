@@ -63,9 +63,6 @@ export function patchTracerForTransactions(): (name: string, options?: SpanOptio
      */
 
     let parentSpanContext = parentSpan?.spanContext();
-    // let parentSpanContext;
-    // if(options.root) parentSpanContext = undefined;
-    // else parentSpanContext = api.trace.getSpanContext(context);
 
     if(!parentSpanContext) {
       const transactionSpan = TransactionSpanManager.getTransactionSpan();

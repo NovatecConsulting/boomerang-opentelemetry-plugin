@@ -49,6 +49,7 @@ export default class OpenTelemetryTracingImpl {
       instrument_xhr: true,
       instrument_document_load: true,
       instrument_user_interaction: true,
+      browser_detector: true
     },
     plugins_config: {
       instrument_fetch: {
@@ -126,7 +127,7 @@ export default class OpenTelemetryTracingImpl {
     const tracerConfiguration: WebTracerConfig = {
       sampler: this.resolveSampler(),
       idGenerator: this.customIdGenerator,
-      resource: this.getResource()
+      resource: this.getBrowserDetectorResources()
     };
 
     // create provider
@@ -286,16 +287,6 @@ export default class OpenTelemetryTracingImpl {
   };
 
   /**
-   * Get Resources with browserDetector
-   */
-  private getResource = () => {
-    let resource= Resource.default();
-    let detectedResources= detectResourcesSync({ detectors:[browserDetector] });
-    resource = resource.merge(detectedResources);
-    return resource;
-  }
-
-  /**
    * Resolves a sampler implementation based on the specified sample rate.
    */
   private resolveSampler = () => {
@@ -309,6 +300,22 @@ export default class OpenTelemetryTracingImpl {
       return new TraceIdRatioBasedSampler(samplingRate);
     }
   };
+
+  /**
+   * Get Resources with browserDetector. Enabled by default.
+   * Ref: https://github.com/open-telemetry/opentelemetry-js/tree/main/experimental/packages/opentelemetry-browser-detector
+   */
+  private getBrowserDetectorResources = () => {
+    const browser_detector = this.props.plugins?.browser_detector;
+    const useBrowserDetector = browser_detector != null ? browser_detector : true;
+    let resource= Resource.default();
+
+    if(useBrowserDetector) {
+      let detectedResources= detectResourcesSync({ detectors:[browserDetector] });
+      resource = resource.merge(detectedResources);
+    }
+    return resource;
+  }
 
   /**
    * @returns Returns the configured context propagator for injecting the trace context into HTTP request headers.
