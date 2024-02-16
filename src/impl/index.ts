@@ -17,7 +17,7 @@ import {
   BatchSpanProcessor,
   Tracer,
 } from '@opentelemetry/sdk-trace-base';
-import { Resource } from '@opentelemetry/resources';
+import { Resource, detectResourcesSync } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { B3InjectEncoding, B3Propagator } from '@opentelemetry/propagator-b3';
 import { PluginProperties, ContextFunction, PropagationHeader } from '../types';
@@ -31,6 +31,7 @@ import { TransactionSpanManager } from './transaction/transactionSpanManager';
 import { CustomXMLHttpRequestInstrumentation } from './instrumentation/xmlHttpRequestInstrumentation';
 import { CustomFetchInstrumentation } from './instrumentation/fetchInstrumentation';
 import { CustomUserInteractionInstrumentation } from './instrumentation/userInteractionInstrumentation';
+import { browserDetector } from '@opentelemetry/opentelemetry-browser-detector';
 
 /**
  * TODOs:
@@ -48,6 +49,7 @@ export default class OpenTelemetryTracingImpl {
       instrument_xhr: true,
       instrument_document_load: true,
       instrument_user_interaction: true,
+      browser_detector: true
     },
     plugins_config: {
       instrument_fetch: {
@@ -124,7 +126,8 @@ export default class OpenTelemetryTracingImpl {
     // the configuration used by the tracer
     const tracerConfiguration: WebTracerConfig = {
       sampler: this.resolveSampler(),
-      idGenerator: this.customIdGenerator
+      idGenerator: this.customIdGenerator,
+      resource: this.getBrowserDetectorResources()
     };
 
     // create provider
@@ -225,35 +228,19 @@ export default class OpenTelemetryTracingImpl {
     this.beaconUrl = url;
   };
 
-  private isTransactionRecordingEnabled = (): boolean => {
-    return this.props.plugins_config?.instrument_document_load?.recordTransaction;
-  }
-
-  private sleep = (delay: number) => {
-    //Use 20 ms as default
-    if(!delay) delay = 20;
-
-    const start = new Date().getTime();
-    while (new Date().getTime() < start + delay);
-  }
+  /**
+   * Returns a tracer instance from the used OpenTelemetry SDK.
+   */
+  public getTracer = (name: string, version?: string) => {
+    return this.traceProvider.getTracer(name, version);
+  };
 
   /**
-   * @returns Returns the configured context propagator for injecting the trace context into HTTP request headers.
+   * Convenient function for executing a functions in the context of
+   * a specified span.
    */
-  private getContextPropagator = () => {
-    switch (this.props.propagationHeader) {
-      case PropagationHeader.B3_SINGLE:
-        return new B3Propagator({
-          injectEncoding: B3InjectEncoding.SINGLE_HEADER,
-        });
-      case PropagationHeader.B3_MULTI:
-        return new B3Propagator({
-          injectEncoding: B3InjectEncoding.MULTI_HEADER,
-        });
-      case PropagationHeader.TRACE_CONTEXT:
-      default:
-        return new W3CTraceContextPropagator();
-    }
+  public withSpan = (span: Span, fn: ContextFunction) => {
+    context.with(trace.setSpan(context.active(), span), fn);
   };
 
   /**
@@ -300,20 +287,58 @@ export default class OpenTelemetryTracingImpl {
   };
 
   /**
-   * Returns a tracer instance from the used OpenTelemetry SDK.
+   * Resolves a sampler implementation based on the specified sample rate.
    */
-  public getTracer = (name: string, version?: string) => {
-    return this.traceProvider.getTracer(name, version);
+  private resolveSampler = () => {
+    const { samplingRate } = this.props;
+
+    if (samplingRate < 0) {
+      return new AlwaysOffSampler();
+    } else if (samplingRate > 1) {
+      return new AlwaysOnSampler();
+    } else {
+      return new TraceIdRatioBasedSampler(samplingRate);
+    }
   };
 
   /**
-   * Convenient function for executing a functions in the context of
-   * a specified span.
+   * Get Resources with browserDetector. Enabled by default.
+   * Ref: https://github.com/open-telemetry/opentelemetry-js/tree/main/experimental/packages/opentelemetry-browser-detector
    */
-  public withSpan = (span: Span, fn: ContextFunction) => {
-    context.with(trace.setSpan(context.active(), span), fn);
+  private getBrowserDetectorResources = () => {
+    const browser_detector = this.props.plugins?.browser_detector;
+    const useBrowserDetector = browser_detector != null ? browser_detector : true;
+    let resource= Resource.default();
+
+    if(useBrowserDetector) {
+      let detectedResources= detectResourcesSync({ detectors:[browserDetector] });
+      resource = resource.merge(detectedResources);
+    }
+    return resource;
+  }
+
+  /**
+   * @returns Returns the configured context propagator for injecting the trace context into HTTP request headers.
+   */
+  private getContextPropagator = () => {
+    switch (this.props.propagationHeader) {
+      case PropagationHeader.B3_SINGLE:
+        return new B3Propagator({
+          injectEncoding: B3InjectEncoding.SINGLE_HEADER,
+        });
+      case PropagationHeader.B3_MULTI:
+        return new B3Propagator({
+          injectEncoding: B3InjectEncoding.MULTI_HEADER,
+        });
+      case PropagationHeader.TRACE_CONTEXT:
+      default:
+        return new W3CTraceContextPropagator();
+    }
   };
 
+  /**
+   * Load instrumentation plugins with their configuration.
+   */
   private getInstrumentationPlugins = () => {
     const {
       plugins,
@@ -325,7 +350,7 @@ export default class OpenTelemetryTracingImpl {
 
     // Instrumentation for the document on load (initial request)
     if (plugins_config?.instrument_document_load?.enabled !== false) {
-        instrumentations.push(new CustomDocumentLoadInstrumentation(plugins_config.instrument_document_load, global_instrumentation));
+      instrumentations.push(new CustomDocumentLoadInstrumentation(plugins_config.instrument_document_load, global_instrumentation));
     }
     else if (plugins?.instrument_document_load !== false) {
       instrumentations.push(new CustomDocumentLoadInstrumentation({}, global_instrumentation));
@@ -373,18 +398,18 @@ export default class OpenTelemetryTracingImpl {
     return undefined;
   };
 
-  /**
-   * Resolves a sampler implementation based on the specified sample rate.
-   */
-  private resolveSampler = () => {
-    const { samplingRate } = this.props;
+  private isTransactionRecordingEnabled = (): boolean => {
+    return this.props.plugins_config?.instrument_document_load?.recordTransaction;
+  }
 
-    if (samplingRate < 0) {
-      return new AlwaysOffSampler();
-    } else if (samplingRate > 1) {
-      return new AlwaysOnSampler();
-    } else {
-      return new TraceIdRatioBasedSampler(samplingRate);
-    }
-  };
+  /**
+   * Helper function to create a delay with busy waiting.
+   */
+  private sleep = (delay: number) => {
+    //Use 20 ms as default
+    if(!delay) delay = 20;
+
+    const start = new Date().getTime();
+    while (new Date().getTime() < start + delay);
+  }
 }

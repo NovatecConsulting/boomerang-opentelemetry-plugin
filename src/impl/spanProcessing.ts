@@ -44,26 +44,24 @@ export class CustomSpanProcessor implements SpanProcessor {
 
 /**
  * Storage to allow the use of multiple SpanProcessors
- * Basically, exports the MultiSpanProcessor from @opentelemetry/sdk-trace-base
+ * Copy of MultiSpanProcessor from @opentelemetry/sdk-trace-base, which cannot be imported for unknown reason
+ * Original: https://github.com/open-telemetry/opentelemetry-js/blob/main/packages/opentelemetry-sdk-trace-base/src/MultiSpanProcessor.ts
  */
 export class MultiSpanProcessor implements SpanProcessor {
-
-  private readonly spanProcessors: SpanProcessor[];
-  constructor(spanProcessors: SpanProcessor[]) {
-    this.spanProcessors = spanProcessors;
-  }
+  constructor(private readonly _spanProcessors: SpanProcessor[]) {}
 
   forceFlush(): Promise<void> {
     const promises: Promise<void>[] = [];
-    for (const spanProcessor of this.spanProcessors) {
+
+    for (const spanProcessor of this._spanProcessors) {
       promises.push(spanProcessor.forceFlush());
     }
-    return new Promise<void>((resolve) => {
+    return new Promise(resolve => {
       Promise.all(promises)
         .then(() => {
           resolve();
         })
-        .catch((error) => {
+        .catch(error => {
           globalErrorHandler(
             error || new Error('MultiSpanProcessor: forceFlush failed')
           );
@@ -72,31 +70,28 @@ export class MultiSpanProcessor implements SpanProcessor {
     });
   }
 
-  onEnd(span: ReadableSpan): void {
-    for (const processor of this.spanProcessors) {
-      processor.onEnd(span);
+  onStart(span: Span, context: Context): void {
+    for (const spanProcessor of this._spanProcessors) {
+      spanProcessor.onStart(span, context);
     }
   }
 
-  onStart(span: Span, parentContext: Context): void {
-    for (const processor of this.spanProcessors) {
-      processor.onStart(span, parentContext);
+  onEnd(span: ReadableSpan): void {
+    for (const spanProcessor of this._spanProcessors) {
+      spanProcessor.onEnd(span);
     }
   }
 
   shutdown(): Promise<void> {
     const promises: Promise<void>[] = [];
-    for (const spanProcessor of this.spanProcessors) {
+
+    for (const spanProcessor of this._spanProcessors) {
       promises.push(spanProcessor.shutdown());
     }
-    return new Promise<void>((resolve, reject) => {
-      Promise.all(promises)
-        .then(() => {
-          resolve();
-        })
-        .catch((error) => {
-          reject(error);
-        });
+    return new Promise((resolve, reject) => {
+      Promise.all(promises).then(() => {
+        resolve();
+      }, reject);
     });
   }
 }
