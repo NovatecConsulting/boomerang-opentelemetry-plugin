@@ -1132,6 +1132,14 @@
     semver "^7.5.2"
     shimmer "^1.2.1"
 
+"@opentelemetry/opentelemetry-browser-detector@^0.48.0":
+  version "0.48.0"
+  resolved "https://registry.yarnpkg.com/@opentelemetry/opentelemetry-browser-detector/-/opentelemetry-browser-detector-0.48.0.tgz#f5c3c5c8101473982a2af02a1de5341c6b4b9a05"
+  integrity sha512-fYR+CJUKSgvyugSbADerx2fUIDNLASLxq3LlfVtfhBSKxjumNu+TgfuS33PuIwQHYsF32rQ8YMMFM5ddzyAuvg==
+  dependencies:
+    "@opentelemetry/resources" "1.21.0"
+    "@opentelemetry/semantic-conventions" "1.21.0"
+
 "@opentelemetry/otlp-exporter-base@0.48.0":
   version "0.48.0"
   resolved "https://registry.yarnpkg.com/@opentelemetry/otlp-exporter-base/-/otlp-exporter-base-0.48.0.tgz#72b4efc548de9a0a7121c37669e052ded619bcc3"
