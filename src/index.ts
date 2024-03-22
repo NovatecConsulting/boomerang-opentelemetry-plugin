@@ -26,11 +26,14 @@ if (isIE && usesPrototype) {
   delete Array.prototype.entries;
 }
 
-import OpenTelemetryTracingImpl from './impl';
-
 if (currentEntriesFn) {
   Array.prototype.entries = currentEntriesFn;
 }
+
+// Get current plugin version specified in package.json
+const { version } = require('../package.json');
+
+import OpenTelemetryTracingImpl from './impl';
 
 /**
  * Skeleton template for all boomerang plugins.
@@ -83,10 +86,14 @@ if (currentEntriesFn) {
       return this;
     },
 
+    // Return the current OpenTelemetry-Plugin version from package.json
+    // Has to be updated for every release!
+    version: version,
+
     // Executes the specified function within the context of the given span
     withSpan: impl.withSpan,
 
-    // Getting an OpenTelemetry tracer instace for manual tracing
+    // Getting an OpenTelemetry tracer instance for manual tracing
     getTracer: impl.getTracer,
 
     // Returns the internally used OpenTelemetry API
