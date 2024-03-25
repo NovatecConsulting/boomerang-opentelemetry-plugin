@@ -32,6 +32,7 @@ import { CustomXMLHttpRequestInstrumentation } from './instrumentation/xmlHttpRe
 import { CustomFetchInstrumentation } from './instrumentation/fetchInstrumentation';
 import { CustomUserInteractionInstrumentation } from './instrumentation/userInteractionInstrumentation';
 import { browserDetector } from '@opentelemetry/opentelemetry-browser-detector';
+import { patchExporter, patchExporterClass } from './patchCollectorPrototype';
 
 /**
  * TODOs:
@@ -95,6 +96,7 @@ export default class OpenTelemetryTracingImpl {
       scheduledDelayMillis: 500,
       exportTimeoutMillis: 30000,
     },
+    prototypeExporterPatch: true,
     commonAttributes: {},
     serviceName: undefined,
     propagationHeader: PropagationHeader.TRACE_CONTEXT
@@ -159,13 +161,11 @@ export default class OpenTelemetryTracingImpl {
 
       const exporter = new OTLPTraceExporter(collectorOptions);
 
-      // Patch is no longer necessary, since the new exporter does no longer use Array.from()
-      // TODO Remove patch after tested in production
       // patches the collector-export in order to be compatible with Prototype.
-      // if (this.props.prototypeExporterPatch) {
-      //   patchExporter(exporter);
-      //   patchExporterClass();
-      // }
+      if (this.props.prototypeExporterPatch) {
+        patchExporter(exporter);  //TODO: Is this necessary?
+        patchExporterClass();
+      }
 
       const batchSpanProcessor = new BatchSpanProcessor(exporter, {
         ...this.defaultProperties.exporter,
