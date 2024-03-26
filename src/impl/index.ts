@@ -96,7 +96,7 @@ export default class OpenTelemetryTracingImpl {
       scheduledDelayMillis: 500,
       exportTimeoutMillis: 30000,
     },
-    prototypeExporterPatch: true,
+    prototypeExporterPatch: false,
     commonAttributes: {},
     serviceName: undefined,
     propagationHeader: PropagationHeader.TRACE_CONTEXT
