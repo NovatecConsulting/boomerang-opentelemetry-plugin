@@ -17,6 +17,7 @@ export interface PluginProperties {
   commonAttributes: StringMap;
   serviceName: string | (() => string);
   propagationHeader: PropagationHeader;
+  prototypeExporterPatch: boolean;
 }
 
 export const enum PropagationHeader {
