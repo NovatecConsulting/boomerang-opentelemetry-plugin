@@ -45,6 +45,7 @@ function sendPatch(
   }
   const serviceRequest = this.convert(items);
 
+  // START fix
   // in order to fix the problem, we temporarily remove the `toJSON`
   // function (1), serializing the spans (2) and reading the function (3)
   // in order to preserve the initial state of the class
@@ -57,6 +58,7 @@ function sendPatch(
   const body = JSON.stringify(serviceRequest);
   // (3)
   arrayPrototype.toJSON = arrayToJson;
+  // END fix
 
   const promise = new Promise<void>((resolve, reject) => {
     if (this._useXHR) {
