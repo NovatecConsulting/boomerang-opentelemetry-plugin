@@ -116,9 +116,9 @@ BOOMR.init({
       }
     },
     exporter: {
-      maxQueueSize: 100,
-      maxExportBatchSize: 10,
-      scheduledDelayMillis: 500,
+      maxQueueSize: 200,
+      maxExportBatchSize: 100,
+      scheduledDelayMillis: 5000,
       exportTimeoutMillis: 30000,
     },
     prototypeExporterPatch: true, // patches the OpenTelemetry collector-span-exporter in case the Prototype framework is used
