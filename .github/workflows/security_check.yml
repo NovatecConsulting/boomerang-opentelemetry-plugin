@@ -1,9 +1,8 @@
 name: Automatic Security Check
 
 on:
-#  schedule:
-#    - cron: "0 8 1,15 * *" # At 08:00 on day-of-month 1 and 15
-  push:
+  schedule:
+    - cron: "0 8 1,15 * *" # At 08:00 on day-of-month 1 and 15
 
 jobs:
   security-check:
@@ -25,6 +24,13 @@ jobs:
         with:
           name: yarn-audit-report
           path: yarn-report.json
+      - name: Send Notification
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "*Boomerang-OTel-Plugin Yarn-Audit Report*: ${{ job.status }}\nPlease check the report here: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
       # if yarn audit failed, the job should also fail, but only after the results were uploaded
       - name: Validate yarn audit outcome
         if: ${{ steps.audit.outcome == 'failure' }}
