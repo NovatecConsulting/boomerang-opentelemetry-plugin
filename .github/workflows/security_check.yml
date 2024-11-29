@@ -17,6 +17,7 @@ jobs:
       - name: Install dependencies
         run: yarn install
       - name: Run yarn audit
+        id: audit
         run: yarn audit --no-color --json > yarn-report.json
         continue-on-error: true # we still want to upload the report
       - name: Upload report
@@ -24,3 +25,9 @@ jobs:
         with:
           name: yarn-audit-report
           path: yarn-report.json
+      # if yarn audit failed, the job should also fail, but only after the results were uploaded
+      - name: Validate yarn audit outcome
+        if: ${{ steps.audit.outcome == 'failure' }}
+        run: |
+          echo "Yarn audit failed"
+          exit 1
