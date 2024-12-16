@@ -22,7 +22,7 @@ jobs:
       - name: Upload report
         uses: actions/upload-artifact@v4
         with:
-          name: yarn-audit-report
+          name: yarn-audit-report-boomerang-opentelemetry-plugin
           path: yarn-report.json
       - name: Send Notification
         uses: slackapi/slack-github-action@v2.0.0
