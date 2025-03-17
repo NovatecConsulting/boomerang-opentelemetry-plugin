@@ -31,7 +31,7 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
-            text: "*Boomerang-OTel-Plugin Yarn-Audit Report*: ${{ job.status }}\nPlease check the report here: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            text: "*Boomerang-OTel-Plugin Yarn-Audit Report*: ${{ steps.audit.outcome }}\nPlease check the report here: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
       # if yarn audit failed, the job should also fail, but only after the results were uploaded
       - name: Validate yarn audit outcome
         if: ${{ steps.audit.outcome == 'failure' }}
